@@ -319,6 +319,24 @@ export default function Edit({ attributes, setAttributes }) {
                                 max={20000}
                                 step={500}
                             />
+                            <RangeControl
+                                label={__('Projection Distance', 'fluid-gradient-block')}
+                                value={fluidSettings.projectionDistance || 1}
+                                onChange={(value) => updateFluidSetting('projectionDistance', value)}
+                                min={0.5}
+                                max={5}
+                                step={0.25}
+                                help={__('How far colors shoot in mouse direction', 'fluid-gradient-block')}
+                            />
+                            <RangeControl
+                                label={__('Fade Speed', 'fluid-gradient-block')}
+                                value={fluidSettings.fadeSpeed || 1}
+                                onChange={(value) => updateFluidSetting('fadeSpeed', value)}
+                                min={0.1}
+                                max={3}
+                                step={0.1}
+                                help={__('How quickly colors fade out (higher = faster)', 'fluid-gradient-block')}
+                            />
                         </PanelBody>
 
                         <PanelBody title={__('Bloom Effect', 'fluid-gradient-block')} initialOpen={false}>
@@ -376,6 +394,12 @@ export default function Edit({ attributes, setAttributes }) {
                                 checked={fluidSettings.darkMode}
                                 onChange={(value) => updateFluidSetting('darkMode', value)}
                                 help={__('Creates dark fluid effect (use with light background)', 'fluid-gradient-block')}
+                            />
+                            <ToggleControl
+                                label={__('Hide Cursor', 'fluid-gradient-block')}
+                                checked={fluidSettings.hideCursor}
+                                onChange={(value) => updateFluidSetting('hideCursor', value)}
+                                help={__('Hides the mouse cursor when hovering over the block', 'fluid-gradient-block')}
                             />
                         </PanelBody>
 

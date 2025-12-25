@@ -39,6 +39,8 @@ function initFluidSimulation(canvas, userSettings) {
         CURL: userSettings.curl || 30,
         SPLAT_RADIUS: userSettings.splatRadius || 0.25,
         SPLAT_FORCE: userSettings.splatForce || 6000,
+        PROJECTION_DISTANCE: userSettings.projectionDistance || 1,
+        FADE_SPEED: userSettings.fadeSpeed || 1,
         BLOOM: userSettings.bloom !== false,
         BLOOM_ITERATIONS: 8,
         BLOOM_RESOLUTION: 256,
@@ -821,11 +823,12 @@ function initFluidSimulation(canvas, userSettings) {
         blit(velocity.write);
         velocity.swap();
 
-        // Advection dye
+        // Advection dye - apply fade speed (higher = lower dissipation = faster fade)
         gl.uniform2f(programs.advection.uniforms.dyeTexelSize, dye.texelSizeX, dye.texelSizeY);
         gl.uniform1i(programs.advection.uniforms.uVelocity, velocity.read.attach(0));
         gl.uniform1i(programs.advection.uniforms.uSource, dye.read.attach(1));
-        gl.uniform1f(programs.advection.uniforms.dissipation, config.DENSITY_DISSIPATION);
+        const adjustedDissipation = config.DENSITY_DISSIPATION / config.FADE_SPEED;
+        gl.uniform1f(programs.advection.uniforms.dissipation, adjustedDissipation);
         blit(dye.write);
         dye.swap();
     }
@@ -919,8 +922,9 @@ function initFluidSimulation(canvas, userSettings) {
     }
 
     function splatPointer(pointer) {
-        const dx = pointer.deltaX * config.SPLAT_FORCE;
-        const dy = pointer.deltaY * config.SPLAT_FORCE;
+        // Apply projection distance multiplier to shoot colors further in mouse direction
+        const dx = pointer.deltaX * config.SPLAT_FORCE * config.PROJECTION_DISTANCE;
+        const dy = pointer.deltaY * config.SPLAT_FORCE * config.PROJECTION_DISTANCE;
         splat(pointer.texcoordX, pointer.texcoordY, dx, dy, pointer.color);
     }
 
@@ -930,8 +934,8 @@ function initFluidSimulation(canvas, userSettings) {
         return radius;
     }
 
-    // Event listeners
-    canvas.addEventListener('mousemove', (e) => {
+    // Event listeners - listen on entire block container so hovering nested blocks still triggers fluid
+    blockContainer.addEventListener('mousemove', (e) => {
         const pointer = pointers[0];
         const rect = canvas.getBoundingClientRect();
         const posX = e.clientX - rect.left;
@@ -939,18 +943,22 @@ function initFluidSimulation(canvas, userSettings) {
         updatePointerMoveData(pointer, posX, posY);
     });
 
-    canvas.addEventListener('mousedown', () => {
+    blockContainer.addEventListener('mousedown', () => {
         const pointer = pointers[0];
         pointer.down = true;
         pointer.color = generateColor();
     });
 
-    canvas.addEventListener('mouseup', () => {
+    blockContainer.addEventListener('mouseup', () => {
         pointers[0].down = false;
     });
 
-    canvas.addEventListener('touchstart', (e) => {
-        e.preventDefault();
+    // Hide cursor if enabled in settings
+    if (userSettings.hideCursor) {
+        blockContainer.style.cursor = 'none';
+    }
+
+    blockContainer.addEventListener('touchstart', (e) => {
         const touches = e.targetTouches;
         while (touches.length >= pointers.length) {
             pointers.push(new Pointer());
@@ -961,10 +969,9 @@ function initFluidSimulation(canvas, userSettings) {
             const posY = touches[i].clientY - rect.top;
             updatePointerDownData(pointers[i + 1], touches[i].identifier, posX, posY);
         }
-    });
+    }, { passive: true });
 
-    canvas.addEventListener('touchmove', (e) => {
-        e.preventDefault();
+    blockContainer.addEventListener('touchmove', (e) => {
         const touches = e.targetTouches;
         for (let i = 0; i < touches.length; i++) {
             const pointer = pointers[i + 1];
@@ -974,9 +981,9 @@ function initFluidSimulation(canvas, userSettings) {
             const posY = touches[i].clientY - rect.top;
             updatePointerMoveData(pointer, posX, posY);
         }
-    }, false);
+    }, { passive: true });
 
-    canvas.addEventListener('touchend', (e) => {
+    blockContainer.addEventListener('touchend', (e) => {
         const touches = e.changedTouches;
         for (let i = 0; i < touches.length; i++) {
             const pointer = pointers.find(p => p.id === touches[i].identifier);

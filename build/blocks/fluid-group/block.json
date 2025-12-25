@@ -33,13 +33,16 @@
         "curl": 30,
         "splatRadius": 0.25,
         "splatForce": 6000,
+        "projectionDistance": 1,
+        "fadeSpeed": 1,
         "bloom": true,
         "bloomIntensity": 0.8,
         "bloomThreshold": 0.6,
         "colorSaturation": 1,
         "colorBrightness": 0.15,
         "rainbowMode": true,
-        "darkMode": false
+        "darkMode": false,
+        "hideCursor": false
       }
     },
     "tagName": {
