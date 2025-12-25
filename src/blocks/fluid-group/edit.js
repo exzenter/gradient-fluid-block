@@ -7,7 +7,6 @@ import {
     useBlockProps,
     InnerBlocks,
     InspectorControls,
-    useInnerBlocksProps,
 } from '@wordpress/block-editor';
 import {
     PanelBody,
@@ -16,7 +15,6 @@ import {
     SelectControl,
     Button,
     TextareaControl,
-    __experimentalDivider as Divider,
 } from '@wordpress/components';
 import { useState } from '@wordpress/element';
 
@@ -225,11 +223,6 @@ export default function Edit({ attributes, setAttributes }) {
         className: `fgb-fluid-group ${enableFluid ? 'has-fluid-background' : ''}`,
     });
 
-    const innerBlocksProps = useInnerBlocksProps(blockProps, {
-        templateLock: false,
-        renderAppender: InnerBlocks.DefaultBlockAppender,
-    });
-
     return (
         <>
             <InspectorControls>
@@ -418,12 +411,16 @@ export default function Edit({ attributes, setAttributes }) {
                 )}
             </InspectorControls>
 
-            <div {...innerBlocksProps}>
+            <div {...blockProps}>
                 {enableFluid && (
                     <div className="fgb-fluid-preview">
                         <span>{__('Fluid Background Active', 'fluid-gradient-block')}</span>
                     </div>
                 )}
+                <InnerBlocks
+                    templateLock={false}
+                    renderAppender={InnerBlocks.DefaultBlockAppender}
+                />
             </div>
         </>
     );

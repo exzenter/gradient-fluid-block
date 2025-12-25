@@ -20,45 +20,36 @@ define('FGB_PLUGIN_URL', plugin_dir_url(__FILE__));
  * Register the block and its assets
  */
 function fgb_register_block() {
-    // Register the block
     register_block_type(FGB_PLUGIN_DIR . 'build/blocks/fluid-group');
 }
 add_action('init', 'fgb_register_block');
 
 /**
- * Enqueue frontend fluid simulation script
+ * Add critical inline CSS for the fluid block
+ * This ensures positioning works even if the stylesheet doesn't load
  */
-function fgb_enqueue_frontend_assets() {
-    if (!is_admin()) {
-        wp_register_script(
-            'fgb-fluid-simulation',
-            FGB_PLUGIN_URL . 'assets/fluid.js',
-            array(),
-            FGB_VERSION,
-            true
-        );
-        
-        wp_register_style(
-            'fgb-fluid-style',
-            FGB_PLUGIN_URL . 'assets/style.css',
-            array(),
-            FGB_VERSION
-        );
-    }
-}
-add_action('wp_enqueue_scripts', 'fgb_enqueue_frontend_assets');
-
-/**
- * Enqueue assets when block is present
- */
-function fgb_enqueue_block_assets($block_content, $block) {
-    if ($block['blockName'] === 'fgb/fluid-group') {
-        $attrs = $block['attrs'] ?? [];
-        if (!empty($attrs['enableFluid'])) {
-            wp_enqueue_script('fgb-fluid-simulation');
-            wp_enqueue_style('fgb-fluid-style');
+function fgb_add_critical_css() {
+    ?>
+    <style id="fgb-critical-css">
+        .fgb-fluid-group {
+            position: relative !important;
+            overflow: hidden;
         }
-    }
-    return $block_content;
+        .fgb-fluid-canvas {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            z-index: 0 !important;
+            display: block;
+        }
+        .fgb-fluid-content {
+            position: relative !important;
+            z-index: 1 !important;
+            width: 100%;
+        }
+    </style>
+    <?php
 }
-add_filter('render_block', 'fgb_enqueue_block_assets', 10, 2);
+add_action('wp_head', 'fgb_add_critical_css', 5);

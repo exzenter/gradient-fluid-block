@@ -611,19 +611,42 @@ function initFluidSimulation(canvas, userSettings) {
             },
         };
     }
+    // Store reference to block container for sizing
+    const blockContainer = canvas.closest('.fgb-fluid-group');
+    let lastWidth = 0;
+    let lastHeight = 0;
 
     function resizeCanvas() {
-        const rect = canvas.parentElement.getBoundingClientRect();
-        const width = Math.floor(rect.width);
-        const height = Math.floor(rect.height);
+        // Use offsetWidth/Height which respects CSS styling including minHeight
+        const width = blockContainer.offsetWidth || 300;
+        const height = blockContainer.offsetHeight || 200;
 
-        if (canvas.width !== width || canvas.height !== height) {
-            canvas.width = width;
-            canvas.height = height;
+        // Only resize if dimensions actually changed significantly (prevents loops)
+        if (Math.abs(width - lastWidth) > 1 || Math.abs(height - lastHeight) > 1) {
+            // Prevent crazy sizes
+            const maxSize = 4096;
+            const safeWidth = Math.min(Math.max(width, 100), maxSize);
+            const safeHeight = Math.min(Math.max(height, 100), maxSize);
+
+            canvas.width = safeWidth;
+            canvas.height = safeHeight;
+            lastWidth = width;
+            lastHeight = height;
             return true;
         }
         return false;
     }
+
+    // Only resize on window resize, not every frame
+    let resizeTimeout;
+    window.addEventListener('resize', function () {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(function () {
+            if (resizeCanvas()) {
+                initFramebuffers();
+            }
+        }, 100);
+    });
 
     function initFramebuffers() {
         const simRes = getResolution(config.SIM_RESOLUTION);
@@ -712,9 +735,7 @@ function initFluidSimulation(canvas, userSettings) {
 
     function update() {
         const dt = calcDeltaTime();
-        if (resizeCanvas()) {
-            initFramebuffers();
-        }
+        // Don't resize every frame - only on window resize
         applyInputs();
         step(dt);
         render(null);
