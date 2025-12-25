@@ -28,33 +28,126 @@ document.addEventListener('DOMContentLoaded', function () {
  * Initialize WebGL Fluid Simulation
  */
 function initFluidSimulation(canvas, userSettings) {
-    // Default configuration
+    // Default configuration - use explicit undefined checks for values that can be 0
     const config = {
-        SIM_RESOLUTION: userSettings.simResolution || 128,
-        DYE_RESOLUTION: userSettings.dyeResolution || 1024,
-        DENSITY_DISSIPATION: userSettings.densityDissipation || 0.97,
-        VELOCITY_DISSIPATION: userSettings.velocityDissipation || 0.98,
-        PRESSURE: userSettings.pressure || 0.8,
+        SIM_RESOLUTION: userSettings.simResolution ?? 128,
+        DYE_RESOLUTION: userSettings.dyeResolution ?? 1024,
+        DENSITY_DISSIPATION: userSettings.densityDissipation ?? 0.97,
+        VELOCITY_DISSIPATION: userSettings.velocityDissipation ?? 0.98,
+        PRESSURE: userSettings.pressure ?? 0.8,
         PRESSURE_ITERATIONS: 20,
-        CURL: userSettings.curl || 30,
-        SPLAT_RADIUS: userSettings.splatRadius || 0.25,
-        SPLAT_FORCE: userSettings.splatForce || 6000,
-        PROJECTION_DISTANCE: userSettings.projectionDistance || 1,
-        FADE_SPEED: userSettings.fadeSpeed || 1,
+        CURL: userSettings.curl ?? 30,
+        SPLAT_RADIUS: userSettings.splatRadius ?? 0.25,
+        SPLAT_FORCE: userSettings.splatForce ?? 6000,
+        PROJECTION_DISTANCE: userSettings.projectionDistance ?? 1,
+        FADE_SPEED: userSettings.fadeSpeed ?? 1,
         BLOOM: userSettings.bloom !== false,
         BLOOM_ITERATIONS: 8,
         BLOOM_RESOLUTION: 256,
-        BLOOM_INTENSITY: userSettings.bloomIntensity || 0.8,
-        BLOOM_THRESHOLD: userSettings.bloomThreshold || 0.6,
+        BLOOM_INTENSITY: userSettings.bloomIntensity ?? 0.8,
+        BLOOM_THRESHOLD: userSettings.bloomThreshold ?? 0.6,
         BLOOM_SOFT_KNEE: 0.7,
+        CALM_DOWN: userSettings.calmDown ?? false,
+        CALM_DOWN_DELAY: userSettings.calmDownDelay ?? 2000,
+        CALM_DOWN_STRENGTH: userSettings.calmDownStrength ?? 0.9,
     };
 
     const colorSettings = {
-        saturation: userSettings.colorSaturation || 1.0,
-        brightness: userSettings.colorBrightness || 0.15,
+        saturation: userSettings.colorSaturation ?? 1.0,
+        brightness: userSettings.colorBrightness ?? 0.15,
+        saturationBoost: userSettings.saturationBoost ?? 1.0,
+        fixedColor: userSettings.fixedColor ?? '#ff00ff',
+        colorChangeDistance: userSettings.colorChangeDistance ?? 0,
+        colorMode: userSettings.colorMode ?? 'rainbow',
+        hueMin: userSettings.hueMin ?? 0,
+        hueMax: userSettings.hueMax ?? 360,
+        gradientSpeed: userSettings.gradientSpeed ?? 0.5,
         rainbowMode: userSettings.rainbowMode !== false,
-        darkMode: userSettings.darkMode || false,
+        preventOverblending: userSettings.preventOverblending ?? false,
+        maxColorIntensity: userSettings.maxColorIntensity ?? 1.0,
+        darkMode: userSettings.darkMode ?? false,
+        blendMode: userSettings.blendMode ?? 'normal',
+        negativeBloom: userSettings.negativeBloom ?? false,
     };
+
+    // Element Interaction settings
+    const elemInteractionSettings = userSettings.elementInteraction || {};
+    const elementInteraction = {
+        enabled: elemInteractionSettings.enabled ?? false,
+        selectors: elemInteractionSettings.selectors ?? '',
+        trackScroll: elemInteractionSettings.trackScroll ?? false,
+        mode: elemInteractionSettings.mode ?? 'hardCorner',
+        softEdgeRadius: elemInteractionSettings.softEdgeRadius ?? 20,
+        forceFieldStrength: elemInteractionSettings.forceFieldStrength ?? 50,
+        forceFieldRadius: elemInteractionSettings.forceFieldRadius ?? 80,
+        attractFieldStrength: elemInteractionSettings.attractFieldStrength ?? 50,
+        attractFieldRadius: elemInteractionSettings.attractFieldRadius ?? 80,
+        turbulenceIntensity: elemInteractionSettings.turbulenceIntensity ?? 30,
+        turbulenceScale: elemInteractionSettings.turbulenceScale ?? 50,
+        affectNewSplats: elemInteractionSettings.affectNewSplats !== false,
+        affectExistingFluid: elemInteractionSettings.affectExistingFluid ?? false,
+        edgeGlow: elemInteractionSettings.edgeGlow ?? false,
+        edgeGlowIntensity: elemInteractionSettings.edgeGlowIntensity ?? 0.5,
+        edgeGlowDistance: elemInteractionSettings.edgeGlowDistance ?? 15,
+        edgeGlowMatchFluid: elemInteractionSettings.edgeGlowMatchFluid ?? true,
+        edgeGlowColor: elemInteractionSettings.edgeGlowColor ?? '#ffffff',
+    };
+
+    // Obstacle/element bounds storage
+    let obstacleBounds = [];
+
+    // Get element bounds relative to canvas
+    function getElementBoundsRelativeToCanvas(element) {
+        const canvasRect = canvas.getBoundingClientRect();
+        const elemRect = element.getBoundingClientRect();
+
+        // Calculate normalized coordinates (0-1 range)
+        // Note: pointer.texcoordY uses (1 - y) for WebGL, so we need to match that
+        const normalizedX = (elemRect.left - canvasRect.left) / canvasRect.width;
+        const normalizedY = 1.0 - (elemRect.bottom - canvasRect.top) / canvasRect.height; // Flip Y for WebGL
+        const normalizedWidth = elemRect.width / canvasRect.width;
+        const normalizedHeight = elemRect.height / canvasRect.height;
+
+        return {
+            // Normalized 0-1 coordinates (WebGL coord system)
+            x: normalizedX,
+            y: normalizedY,
+            width: normalizedWidth,
+            height: normalizedHeight,
+            // Pixel coordinates for calculations
+            px: elemRect.left - canvasRect.left,
+            py: elemRect.top - canvasRect.top,
+            pWidth: elemRect.width,
+            pHeight: elemRect.height,
+        };
+    }
+
+    // Update obstacle bounds from DOM elements
+    function updateObstacleBounds() {
+        if (!elementInteraction.enabled || !elementInteraction.selectors) {
+            obstacleBounds = [];
+            return;
+        }
+        try {
+            const elements = document.querySelectorAll(elementInteraction.selectors);
+            obstacleBounds = Array.from(elements).map(el => getElementBoundsRelativeToCanvas(el));
+        } catch (e) {
+            console.warn('Invalid element selectors:', e);
+            obstacleBounds = [];
+        }
+    }
+
+    // Gradient mode state - tracks current hue for smooth transitions
+    let gradientHue = Math.random();
+
+    // Calm down mode - track last input time
+    let lastInputTime = Date.now();
+
+    // Apply canvas blend and filter styles
+    canvas.style.mixBlendMode = colorSettings.blendMode;
+    if (colorSettings.negativeBloom) {
+        canvas.style.filter = 'invert(1)';
+    }
 
     // Pointer tracking
     class Pointer {
@@ -69,6 +162,7 @@ function initFluidSimulation(canvas, userSettings) {
             this.down = false;
             this.moved = false;
             this.color = { r: 0.5, g: 0.2, b: 0.8 };
+            this.distanceSinceColorChange = 0;
         }
     }
 
@@ -647,8 +741,23 @@ function initFluidSimulation(canvas, userSettings) {
             if (resizeCanvas()) {
                 initFramebuffers();
             }
+            // Update obstacle bounds on resize
+            updateObstacleBounds();
         }, 100);
     });
+
+    // Track scroll if enabled
+    if (elementInteraction.enabled && elementInteraction.trackScroll) {
+        window.addEventListener('scroll', function () {
+            updateObstacleBounds();
+        }, { passive: true });
+    }
+
+    // Initial obstacle bounds update
+    if (elementInteraction.enabled) {
+        // Delay to ensure DOM is ready
+        setTimeout(updateObstacleBounds, 200);
+    }
 
     function initFramebuffers() {
         const simRes = getResolution(config.SIM_RESOLUTION);
@@ -693,15 +802,58 @@ function initFluidSimulation(canvas, userSettings) {
     // Color generation
     function generateColor() {
         let c;
-        if (colorSettings.rainbowMode) {
-            c = HSVtoRGB(Math.random(), colorSettings.saturation, 1.0);
-        } else {
-            c = { r: 1, g: 0, b: 1 };
+        const boostedSat = Math.min(colorSettings.saturation * colorSettings.saturationBoost, 1.0);
+        const mode = colorSettings.colorMode || 'rainbow';
+
+        switch (mode) {
+            case 'rainbow':
+                // Full rainbow - completely random hue
+                c = HSVtoRGB(Math.random(), boostedSat, 1.0);
+                break;
+
+            case 'huerange':
+                // Limited hue range - random within specified bounds
+                const hueMinNorm = colorSettings.hueMin / 360;
+                const hueMaxNorm = colorSettings.hueMax / 360;
+                let hue;
+                if (hueMinNorm <= hueMaxNorm) {
+                    // Normal range (e.g., 60-180 for greens)
+                    hue = hueMinNorm + Math.random() * (hueMaxNorm - hueMinNorm);
+                } else {
+                    // Wrapped range (e.g., 300-60 for magentas to yellows via red)
+                    const range = (1 - hueMinNorm) + hueMaxNorm;
+                    hue = hueMinNorm + Math.random() * range;
+                    if (hue > 1) hue -= 1;
+                }
+                c = HSVtoRGB(hue, boostedSat, 1.0);
+                break;
+
+            case 'gradient':
+                // Smooth gradient - incrementally cycle through hues
+                gradientHue += colorSettings.gradientSpeed * 0.01;
+                if (gradientHue > 1) gradientHue -= 1;
+                c = HSVtoRGB(gradientHue, boostedSat, 1.0);
+                break;
+
+            case 'single':
+            default:
+                // Single fixed color
+                const hex = colorSettings.fixedColor || '#ff00ff';
+                c = hexToRGB(hex);
+                break;
         }
 
         c.r *= colorSettings.brightness;
         c.g *= colorSettings.brightness;
         c.b *= colorSettings.brightness;
+
+        // Apply prevent overblending (color clamping)
+        if (colorSettings.preventOverblending) {
+            const max = colorSettings.maxColorIntensity;
+            c.r = Math.min(c.r, max);
+            c.g = Math.min(c.g, max);
+            c.b = Math.min(c.b, max);
+        }
 
         if (colorSettings.darkMode) {
             c.r = -c.r;
@@ -710,6 +862,16 @@ function initFluidSimulation(canvas, userSettings) {
         }
 
         return c;
+    }
+
+    // Helper to convert hex to RGB
+    function hexToRGB(hex) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16) / 255,
+            g: parseInt(result[2], 16) / 255,
+            b: parseInt(result[3], 16) / 255
+        } : { r: 1, g: 0, b: 1 };
     }
 
     function HSVtoRGB(h, s, v) {
@@ -819,7 +981,19 @@ function initFluidSimulation(canvas, userSettings) {
         gl.uniform1i(programs.advection.uniforms.uVelocity, velocityId);
         gl.uniform1i(programs.advection.uniforms.uSource, velocityId);
         gl.uniform1f(programs.advection.uniforms.dt, dt);
-        gl.uniform1f(programs.advection.uniforms.dissipation, config.VELOCITY_DISSIPATION);
+
+        // Apply calm down - increase damping when no input for a while
+        let velocityDissipation = config.VELOCITY_DISSIPATION;
+        if (config.CALM_DOWN) {
+            const timeSinceInput = Date.now() - lastInputTime;
+            if (timeSinceInput > config.CALM_DOWN_DELAY) {
+                // Gradually apply stronger damping
+                const calmFactor = Math.min((timeSinceInput - config.CALM_DOWN_DELAY) / 1000, 1);
+                velocityDissipation = config.VELOCITY_DISSIPATION *
+                    (1 - calmFactor) + config.CALM_DOWN_STRENGTH * calmFactor;
+            }
+        }
+        gl.uniform1f(programs.advection.uniforms.dissipation, velocityDissipation);
         blit(velocity.write);
         velocity.swap();
 
@@ -831,6 +1005,99 @@ function initFluidSimulation(canvas, userSettings) {
         gl.uniform1f(programs.advection.uniforms.dissipation, adjustedDissipation);
         blit(dye.write);
         dye.swap();
+
+        // Apply obstacle effects to existing fluid if enabled
+        if (elementInteraction.enabled && elementInteraction.affectExistingFluid && obstacleBounds.length > 0) {
+            applyObstacleEffectsToFluid();
+        }
+    }
+
+    // Apply obstacle effects to already-existing fluid on canvas
+    function applyObstacleEffectsToFluid() {
+        const mode = elementInteraction.mode;
+
+        for (const bounds of obstacleBounds) {
+            // Center of obstacle in normalized coords
+            const cx = bounds.x + bounds.width / 2;
+            const cy = bounds.y + bounds.height / 2;
+
+            switch (mode) {
+                case 'hardCorner':
+                case 'softEdge':
+                    // Apply negative splat (subtract color) to clear fluid in obstacle area
+                    const radius = mode === 'softEdge'
+                        ? Math.max(bounds.width, bounds.height) * 0.5 + (elementInteraction.softEdgeRadius / canvas.width)
+                        : Math.max(bounds.width, bounds.height) * 0.4;
+
+                    // Clear velocity in obstacle area
+                    gl.useProgram(programs.splat.program);
+                    gl.uniform1i(programs.splat.uniforms.uTarget, velocity.read.attach(0));
+                    gl.uniform1f(programs.splat.uniforms.aspectRatio, canvas.width / canvas.height);
+                    gl.uniform2f(programs.splat.uniforms.point, cx, cy);
+                    gl.uniform3f(programs.splat.uniforms.color, 0.0, 0.0, 0.0); // Zero velocity
+                    gl.uniform1f(programs.splat.uniforms.radius, radius * 0.5);
+                    blit(velocity.write);
+                    velocity.swap();
+
+                    // Dim/clear dye in obstacle area
+                    gl.uniform1i(programs.splat.uniforms.uTarget, dye.read.attach(0));
+                    // Use negative color to subtract existing colors
+                    const clearStrength = mode === 'softEdge' ? -0.02 : -0.05;
+                    gl.uniform3f(programs.splat.uniforms.color, clearStrength, clearStrength, clearStrength);
+                    gl.uniform1f(programs.splat.uniforms.radius, radius * 0.5);
+                    blit(dye.write);
+                    dye.swap();
+                    break;
+
+                case 'forceField':
+                    // Push existing fluid away from obstacle
+                    const forceRadius = (elementInteraction.forceFieldRadius / canvas.width) + bounds.width * 0.5;
+                    const forceStrength = elementInteraction.forceFieldStrength * 0.01;
+
+                    // Apply outward velocity
+                    gl.useProgram(programs.splat.program);
+                    gl.uniform1i(programs.splat.uniforms.uTarget, velocity.read.attach(0));
+                    gl.uniform1f(programs.splat.uniforms.aspectRatio, canvas.width / canvas.height);
+                    gl.uniform2f(programs.splat.uniforms.point, cx, cy);
+                    gl.uniform3f(programs.splat.uniforms.color, forceStrength, forceStrength, 0.0);
+                    gl.uniform1f(programs.splat.uniforms.radius, forceRadius);
+                    blit(velocity.write);
+                    velocity.swap();
+                    break;
+
+                case 'attractField':
+                    // Pull existing fluid toward obstacle
+                    const attractRadius = (elementInteraction.attractFieldRadius / canvas.width) + bounds.width * 0.5;
+                    const attractStrength = -elementInteraction.attractFieldStrength * 0.005;
+
+                    gl.useProgram(programs.splat.program);
+                    gl.uniform1i(programs.splat.uniforms.uTarget, velocity.read.attach(0));
+                    gl.uniform1f(programs.splat.uniforms.aspectRatio, canvas.width / canvas.height);
+                    gl.uniform2f(programs.splat.uniforms.point, cx, cy);
+                    gl.uniform3f(programs.splat.uniforms.color, attractStrength, attractStrength, 0.0);
+                    gl.uniform1f(programs.splat.uniforms.radius, attractRadius);
+                    blit(velocity.write);
+                    velocity.swap();
+                    break;
+
+                case 'turbulence':
+                    // Add swirling velocity around obstacle
+                    const turbRadius = bounds.width + (elementInteraction.turbulenceIntensity / canvas.width);
+                    const turbStrength = elementInteraction.turbulenceIntensity * 0.001;
+                    const time = Date.now() / elementInteraction.turbulenceScale;
+                    const swirl = Math.sin(time) * turbStrength;
+
+                    gl.useProgram(programs.splat.program);
+                    gl.uniform1i(programs.splat.uniforms.uTarget, velocity.read.attach(0));
+                    gl.uniform1f(programs.splat.uniforms.aspectRatio, canvas.width / canvas.height);
+                    gl.uniform2f(programs.splat.uniforms.point, cx, cy);
+                    gl.uniform3f(programs.splat.uniforms.color, swirl, -swirl * 0.5, 0.0); // Rotational velocity
+                    gl.uniform1f(programs.splat.uniforms.radius, turbRadius);
+                    blit(velocity.write);
+                    velocity.swap();
+                    break;
+            }
+        }
     }
 
     function render(target) {
@@ -905,7 +1172,120 @@ function initFluidSimulation(canvas, userSettings) {
         blit(destination);
     }
 
+    // Check if a point (normalized 0-1 coords) is inside any obstacle
+    function isPointInObstacle(x, y) {
+        for (const bounds of obstacleBounds) {
+            if (x >= bounds.x && x <= bounds.x + bounds.width &&
+                y >= bounds.y && y <= bounds.y + bounds.height) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Get obstacle interaction effect for a point
+    function getObstacleInteraction(x, y) {
+        if (!elementInteraction.enabled || obstacleBounds.length === 0) {
+            return { blocked: false, forceX: 0, forceY: 0, opacity: 1 };
+        }
+
+        const mode = elementInteraction.mode;
+        let result = { blocked: false, forceX: 0, forceY: 0, opacity: 1 };
+
+        for (const bounds of obstacleBounds) {
+            // Check if inside obstacle
+            const insideX = x >= bounds.x && x <= bounds.x + bounds.width;
+            const insideY = y >= bounds.y && y <= bounds.y + bounds.height;
+            const inside = insideX && insideY;
+
+            // Center of obstacle (normalized)
+            const cx = bounds.x + bounds.width / 2;
+            const cy = bounds.y + bounds.height / 2;
+
+            // Distance to center (in pixels for radius calculations)
+            const aspectRatio = canvas.width / canvas.height;
+            const dx = (x - cx) * canvas.width;
+            const dy = (y - cy) * canvas.height;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            // Distance to edge (rough approximation)
+            const halfWidth = bounds.pWidth / 2;
+            const halfHeight = bounds.pHeight / 2;
+            const edgeDist = inside ? 0 : Math.max(0,
+                Math.min(
+                    Math.abs((x - cx) * canvas.width) - halfWidth,
+                    Math.abs((y - cy) * canvas.height) - halfHeight
+                )
+            );
+
+            switch (mode) {
+                case 'hardCorner':
+                    if (inside) {
+                        result.blocked = true;
+                        result.opacity = 0;
+                    }
+                    break;
+
+                case 'softEdge':
+                    const fadeRadius = elementInteraction.softEdgeRadius;
+                    if (inside) {
+                        result.blocked = true;
+                        result.opacity = 0;
+                    } else if (edgeDist < fadeRadius) {
+                        result.opacity = Math.min(result.opacity, edgeDist / fadeRadius);
+                    }
+                    break;
+
+                case 'forceField':
+                    const forceRadius = elementInteraction.forceFieldRadius;
+                    const forceStrength = elementInteraction.forceFieldStrength;
+                    if (dist < forceRadius + halfWidth) {
+                        const factor = 1 - (dist / (forceRadius + halfWidth));
+                        const force = factor * forceStrength;
+                        const angle = Math.atan2(dy, dx);
+                        result.forceX += Math.cos(angle) * force;
+                        result.forceY += Math.sin(angle) * force;
+                    }
+                    if (inside) {
+                        result.blocked = true;
+                    }
+                    break;
+
+                case 'attractField':
+                    const attractRadius = elementInteraction.attractFieldRadius;
+                    const attractStrength = elementInteraction.attractFieldStrength;
+                    if (dist < attractRadius + halfWidth && !inside) {
+                        const factor = 1 - (dist / (attractRadius + halfWidth));
+                        const force = factor * attractStrength;
+                        const angle = Math.atan2(dy, dx);
+                        // Attract = negative of repel
+                        result.forceX -= Math.cos(angle) * force;
+                        result.forceY -= Math.sin(angle) * force;
+                    }
+                    break;
+
+                case 'turbulence':
+                    const turbRadius = bounds.pWidth;
+                    const turbIntensity = elementInteraction.turbulenceIntensity;
+                    const turbScale = elementInteraction.turbulenceScale;
+                    if (dist < turbRadius * 2 && !inside) {
+                        // Create swirling motion
+                        const angle = Math.atan2(dy, dx) + Math.PI / 2; // Perpendicular
+                        const factor = (1 - dist / (turbRadius * 2)) * turbIntensity;
+                        result.forceX += Math.cos(angle) * factor * (Math.sin(Date.now() / turbScale) * 0.5 + 0.5);
+                        result.forceY += Math.sin(angle) * factor * (Math.cos(Date.now() / turbScale) * 0.5 + 0.5);
+                    }
+                    break;
+            }
+        }
+
+        return result;
+    }
+
     function splat(x, y, dx, dy, color) {
+        // Reset calm down timer on any input
+        lastInputTime = Date.now();
+
         gl.useProgram(programs.splat.program);
         gl.uniform1i(programs.splat.uniforms.uTarget, velocity.read.attach(0));
         gl.uniform1f(programs.splat.uniforms.aspectRatio, canvas.width / canvas.height);
@@ -923,9 +1303,32 @@ function initFluidSimulation(canvas, userSettings) {
 
     function splatPointer(pointer) {
         // Apply projection distance multiplier to shoot colors further in mouse direction
-        const dx = pointer.deltaX * config.SPLAT_FORCE * config.PROJECTION_DISTANCE;
-        const dy = pointer.deltaY * config.SPLAT_FORCE * config.PROJECTION_DISTANCE;
-        splat(pointer.texcoordX, pointer.texcoordY, dx, dy, pointer.color);
+        let dx = pointer.deltaX * config.SPLAT_FORCE * config.PROJECTION_DISTANCE;
+        let dy = pointer.deltaY * config.SPLAT_FORCE * config.PROJECTION_DISTANCE;
+        let color = pointer.color;
+
+        // Only check obstacle interaction if affectNewSplats is enabled
+        if (elementInteraction.enabled && elementInteraction.affectNewSplats) {
+            const interaction = getObstacleInteraction(pointer.texcoordX, pointer.texcoordY);
+
+            // If blocked (inside obstacle), don't splat
+            if (interaction.blocked) {
+                return;
+            }
+
+            // Add force field effects
+            dx += interaction.forceX;
+            dy += interaction.forceY;
+
+            // Apply opacity for soft edge (reduce color intensity)
+            color = {
+                r: pointer.color.r * interaction.opacity,
+                g: pointer.color.g * interaction.opacity,
+                b: pointer.color.b * interaction.opacity,
+            };
+        }
+
+        splat(pointer.texcoordX, pointer.texcoordY, dx, dy, color);
     }
 
     function correctRadius(radius) {
@@ -1014,7 +1417,20 @@ function initFluidSimulation(canvas, userSettings) {
         pointer.moved = Math.abs(pointer.deltaX) > 0 || Math.abs(pointer.deltaY) > 0;
 
         if (pointer.moved) {
-            pointer.color = generateColor();
+            // Calculate pixel distance traveled
+            const pixelDx = pointer.deltaX * canvas.width;
+            const pixelDy = pointer.deltaY * canvas.height;
+            const pixelDistance = Math.sqrt(pixelDx * pixelDx + pixelDy * pixelDy);
+
+            // Add to cumulative distance since last color change
+            pointer.distanceSinceColorChange += pixelDistance;
+
+            // Only generate new color if we've traveled enough distance (or colorChangeDistance is 0)
+            const threshold = colorSettings.colorChangeDistance;
+            if (threshold === 0 || pointer.distanceSinceColorChange >= threshold) {
+                pointer.color = generateColor();
+                pointer.distanceSinceColorChange = 0; // Reset distance counter
+            }
         }
     }
 
