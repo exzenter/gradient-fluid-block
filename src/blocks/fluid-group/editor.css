@@ -1,0 +1,24 @@
+/* Editor styles for Fluid Gradient Group Block */
+
+.fgb-fluid-group {
+    position: relative;
+    min-height: 200px;
+}
+
+.fgb-fluid-group.has-fluid-background {
+    background: #000;
+}
+
+.fgb-fluid-preview {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(99, 102, 241, 0.9);
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    z-index: 10;
+    pointer-events: none;
+}

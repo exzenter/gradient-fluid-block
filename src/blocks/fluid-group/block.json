@@ -1,0 +1,104 @@
+{
+    "$schema": "https://schemas.wp.org/trunk/block.json",
+    "apiVersion": 3,
+    "name": "fgb/fluid-group",
+    "version": "1.0.0",
+    "title": "Fluid Gradient Group",
+    "category": "design",
+    "icon": "slides",
+    "description": "A container block with optional WebGL fluid dynamics background.",
+    "keywords": [
+        "fluid",
+        "gradient",
+        "animation",
+        "group",
+        "container",
+        "webgl"
+    ],
+    "textdomain": "fluid-gradient-block",
+    "attributes": {
+        "enableFluid": {
+            "type": "boolean",
+            "default": false
+        },
+        "fluidSettings": {
+            "type": "object",
+            "default": {
+                "preset": "default",
+                "simResolution": 128,
+                "dyeResolution": 1024,
+                "densityDissipation": 0.97,
+                "velocityDissipation": 0.98,
+                "pressure": 0.8,
+                "curl": 30,
+                "splatRadius": 0.25,
+                "splatForce": 6000,
+                "bloom": true,
+                "bloomIntensity": 0.8,
+                "bloomThreshold": 0.6,
+                "colorSaturation": 1.0,
+                "colorBrightness": 0.15,
+                "rainbowMode": true,
+                "darkMode": false
+            }
+        },
+        "tagName": {
+            "type": "string",
+            "default": "div"
+        },
+        "minHeight": {
+            "type": "string"
+        },
+        "backgroundColor": {
+            "type": "string"
+        }
+    },
+    "supports": {
+        "anchor": true,
+        "align": [
+            "wide",
+            "full"
+        ],
+        "html": false,
+        "background": {
+            "backgroundImage": true,
+            "backgroundSize": true
+        },
+        "color": {
+            "gradients": true,
+            "heading": true,
+            "button": true,
+            "link": true,
+            "text": true,
+            "background": true
+        },
+        "spacing": {
+            "margin": true,
+            "padding": true,
+            "blockGap": true
+        },
+        "dimensions": {
+            "minHeight": true
+        },
+        "position": {
+            "sticky": true
+        },
+        "typography": {
+            "fontSize": true,
+            "lineHeight": true
+        },
+        "layout": {
+            "allowSizingOnChildren": true
+        },
+        "__experimentalBorder": {
+            "color": true,
+            "radius": true,
+            "style": true,
+            "width": true
+        }
+    },
+    "editorScript": "file:./index.js",
+    "editorStyle": "file:./editor.css",
+    "style": "file:./style.css",
+    "viewScript": "file:./view.js"
+}

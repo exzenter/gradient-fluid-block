@@ -1,0 +1,16 @@
+{
+    "name": "fluid-gradient-block",
+    "version": "1.0.0",
+    "description": "A Gutenberg block with WebGL fluid dynamics background",
+    "author": "Fluid Gradient",
+    "license": "MIT",
+    "main": "build/index.js",
+    "scripts": {
+        "build": "wp-scripts build",
+        "start": "wp-scripts start",
+        "packages-update": "wp-scripts packages-update"
+    },
+    "devDependencies": {
+        "@wordpress/scripts": "^27.0.0"
+    }
+}

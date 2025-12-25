@@ -1,0 +1,37 @@
+/* Frontend styles for Fluid Gradient Group Block */
+
+.fgb-fluid-group {
+    position: relative;
+    overflow: hidden;
+}
+
+.fgb-fluid-group.has-fluid-background {
+    background: #000;
+}
+
+.fgb-fluid-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: auto;
+}
+
+.fgb-fluid-content {
+    position: relative;
+    z-index: 1;
+}
+
+/* Ensure content is clickable */
+.fgb-fluid-group.has-fluid-background .fgb-fluid-content {
+    pointer-events: auto;
+}
+
+.fgb-fluid-group.has-fluid-background .fgb-fluid-content a,
+.fgb-fluid-group.has-fluid-background .fgb-fluid-content button,
+.fgb-fluid-group.has-fluid-background .fgb-fluid-content input {
+    position: relative;
+    z-index: 2;
+}
