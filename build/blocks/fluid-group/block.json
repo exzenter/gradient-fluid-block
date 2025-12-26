@@ -59,7 +59,16 @@
         "preventOverblending": false,
         "maxColorIntensity": 1,
         "darkMode": false,
-        "hideCursor": false,
+        "cursorMode": "default",
+        "dotCursor": {
+          "size": 10,
+          "color": "#ffffff"
+        },
+        "crosshairCursor": {
+          "thickness": 1,
+          "color": "#ffffff"
+        },
+        "siblingHoverMode": false,
         "blendMode": "normal",
         "negativeBloom": false,
         "elementInteraction": {

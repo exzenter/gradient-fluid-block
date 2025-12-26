@@ -396,11 +396,91 @@ export default function Edit({ attributes, setAttributes }) {
                                 onChange={(value) => updateFluidSetting('darkMode', value)}
                                 help={__('Creates dark fluid effect (use with light background)', 'fluid-gradient-block')}
                             />
+                            <hr style={{ margin: '20px 0', borderColor: '#ddd' }} />
+                            <SelectControl
+                                label={__('Cursor Mode', 'fluid-gradient-block')}
+                                value={fluidSettings.cursorMode || 'default'}
+                                options={[
+                                    { label: 'Default', value: 'default' },
+                                    { label: 'Hidden', value: 'hidden' },
+                                    { label: 'Dot', value: 'dot' },
+                                    { label: 'Crosshair', value: 'crosshair' },
+                                ]}
+                                onChange={(value) => updateFluidSetting('cursorMode', value)}
+                                help={__('Choose how the cursor appears over the block', 'fluid-gradient-block')}
+                            />
+                            {fluidSettings.cursorMode === 'dot' && (
+                                <>
+                                    <RangeControl
+                                        label={__('Dot Size', 'fluid-gradient-block')}
+                                        value={fluidSettings.dotCursor?.size ?? 10}
+                                        onChange={(value) => setAttributes({
+                                            fluidSettings: {
+                                                ...fluidSettings,
+                                                dotCursor: { ...fluidSettings.dotCursor, size: value }
+                                            }
+                                        })}
+                                        min={4}
+                                        max={50}
+                                        step={2}
+                                    />
+                                    <div className="components-base-control">
+                                        <label className="components-base-control__label">
+                                            {__('Dot Color', 'fluid-gradient-block')}
+                                        </label>
+                                        <input
+                                            type="color"
+                                            value={fluidSettings.dotCursor?.color || '#ffffff'}
+                                            onChange={(e) => setAttributes({
+                                                fluidSettings: {
+                                                    ...fluidSettings,
+                                                    dotCursor: { ...fluidSettings.dotCursor, color: e.target.value }
+                                                }
+                                            })}
+                                            style={{ width: '100%', height: '36px', cursor: 'pointer' }}
+                                        />
+                                    </div>
+                                </>
+                            )}
+                            {fluidSettings.cursorMode === 'crosshair' && (
+                                <>
+                                    <RangeControl
+                                        label={__('Line Thickness', 'fluid-gradient-block')}
+                                        value={fluidSettings.crosshairCursor?.thickness ?? 1}
+                                        onChange={(value) => setAttributes({
+                                            fluidSettings: {
+                                                ...fluidSettings,
+                                                crosshairCursor: { ...fluidSettings.crosshairCursor, thickness: value }
+                                            }
+                                        })}
+                                        min={1}
+                                        max={10}
+                                        step={1}
+                                    />
+                                    <div className="components-base-control">
+                                        <label className="components-base-control__label">
+                                            {__('Line Color', 'fluid-gradient-block')}
+                                        </label>
+                                        <input
+                                            type="color"
+                                            value={fluidSettings.crosshairCursor?.color || '#ffffff'}
+                                            onChange={(e) => setAttributes({
+                                                fluidSettings: {
+                                                    ...fluidSettings,
+                                                    crosshairCursor: { ...fluidSettings.crosshairCursor, color: e.target.value }
+                                                }
+                                            })}
+                                            style={{ width: '100%', height: '36px', cursor: 'pointer' }}
+                                        />
+                                    </div>
+                                </>
+                            )}
+                            <hr style={{ margin: '20px 0', borderColor: '#ddd' }} />
                             <ToggleControl
-                                label={__('Hide Cursor', 'fluid-gradient-block')}
-                                checked={fluidSettings.hideCursor}
-                                onChange={(value) => updateFluidSetting('hideCursor', value)}
-                                help={__('Hides the mouse cursor when hovering over the block', 'fluid-gradient-block')}
+                                label={__('Sibling Hover Mode', 'fluid-gradient-block')}
+                                checked={fluidSettings.siblingHoverMode}
+                                onChange={(value) => updateFluidSetting('siblingHoverMode', value)}
+                                help={__('Track mouse through overlapping sibling elements. Use when content is placed outside the block but visually overlays it (e.g., sticky layouts).', 'fluid-gradient-block')}
                             />
                         </PanelBody>
 

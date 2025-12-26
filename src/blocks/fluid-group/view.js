@@ -93,6 +93,16 @@ function initFluidSimulation(canvas, userSettings) {
         edgeGlowColor: elemInteractionSettings.edgeGlowColor ?? '#ffffff',
     };
 
+    // Cursor settings
+    const cursorSettings = {
+        mode: userSettings.cursorMode ?? 'default',
+        dotSize: userSettings.dotCursor?.size ?? 10,
+        dotColor: userSettings.dotCursor?.color ?? '#ffffff',
+        crosshairThickness: userSettings.crosshairCursor?.thickness ?? 1,
+        crosshairColor: userSettings.crosshairCursor?.color ?? '#ffffff',
+        siblingHoverMode: userSettings.siblingHoverMode ?? false,
+    };
+
     // Obstacle/element bounds storage
     let obstacleBounds = [];
 
@@ -1338,27 +1348,169 @@ function initFluidSimulation(canvas, userSettings) {
     }
 
     // Event listeners - listen on entire block container so hovering nested blocks still triggers fluid
-    blockContainer.addEventListener('mousemove', (e) => {
-        const pointer = pointers[0];
-        const rect = canvas.getBoundingClientRect();
-        const posX = e.clientX - rect.left;
-        const posY = e.clientY - rect.top;
-        updatePointerMoveData(pointer, posX, posY);
-    });
+    // If siblingHoverMode is enabled, listen on document level to track mouse through sibling elements
+    if (cursorSettings.siblingHoverMode) {
+        // Document-level mouse tracking for sibling hover mode
+        document.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const isInBounds = e.clientX >= rect.left && e.clientX <= rect.right &&
+                e.clientY >= rect.top && e.clientY <= rect.bottom;
 
-    blockContainer.addEventListener('mousedown', () => {
-        const pointer = pointers[0];
-        pointer.down = true;
-        pointer.color = generateColor();
-    });
+            if (isInBounds) {
+                const pointer = pointers[0];
+                const posX = e.clientX - rect.left;
+                const posY = e.clientY - rect.top;
+                updatePointerMoveData(pointer, posX, posY);
+            }
+        });
 
-    blockContainer.addEventListener('mouseup', () => {
-        pointers[0].down = false;
-    });
+        document.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const isInBounds = e.clientX >= rect.left && e.clientX <= rect.right &&
+                e.clientY >= rect.top && e.clientY <= rect.bottom;
 
-    // Hide cursor if enabled in settings
-    if (userSettings.hideCursor) {
-        blockContainer.style.cursor = 'none';
+            if (isInBounds) {
+                const pointer = pointers[0];
+                pointer.down = true;
+                pointer.color = generateColor();
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            pointers[0].down = false;
+        });
+    } else {
+        // Normal mode - listen on block container only
+        blockContainer.addEventListener('mousemove', (e) => {
+            const pointer = pointers[0];
+            const rect = canvas.getBoundingClientRect();
+            const posX = e.clientX - rect.left;
+            const posY = e.clientY - rect.top;
+            updatePointerMoveData(pointer, posX, posY);
+        });
+
+        blockContainer.addEventListener('mousedown', () => {
+            const pointer = pointers[0];
+            pointer.down = true;
+            pointer.color = generateColor();
+        });
+
+        blockContainer.addEventListener('mouseup', () => {
+            pointers[0].down = false;
+        });
+    }
+
+    // Custom cursor implementation
+    let customCursorElement = null;
+    let crosshairHLine = null;
+    let crosshairVLine = null;
+
+    function setupCustomCursor() {
+        const mode = cursorSettings.mode;
+
+        if (mode === 'hidden') {
+            blockContainer.style.cursor = 'none';
+        } else if (mode === 'dot') {
+            blockContainer.style.cursor = 'none';
+
+            // Create dot cursor element
+            customCursorElement = document.createElement('div');
+            customCursorElement.className = 'fgb-dot-cursor';
+            customCursorElement.style.cssText = `
+                position: fixed;
+                pointer-events: none;
+                z-index: 999999;
+                width: ${cursorSettings.dotSize}px;
+                height: ${cursorSettings.dotSize}px;
+                background-color: ${cursorSettings.dotColor};
+                border-radius: 50%;
+                transform: translate(-50%, -50%);
+                display: none;
+            `;
+            document.body.appendChild(customCursorElement);
+        } else if (mode === 'crosshair') {
+            blockContainer.style.cursor = 'none';
+
+            // Create horizontal line
+            crosshairHLine = document.createElement('div');
+            crosshairHLine.className = 'fgb-crosshair-h';
+            crosshairHLine.style.cssText = `
+                position: fixed;
+                left: 0;
+                right: 0;
+                height: ${cursorSettings.crosshairThickness}px;
+                background-color: ${cursorSettings.crosshairColor};
+                pointer-events: none;
+                z-index: 999999;
+                display: none;
+            `;
+            document.body.appendChild(crosshairHLine);
+
+            // Create vertical line
+            crosshairVLine = document.createElement('div');
+            crosshairVLine.className = 'fgb-crosshair-v';
+            crosshairVLine.style.cssText = `
+                position: fixed;
+                top: 0;
+                bottom: 0;
+                width: ${cursorSettings.crosshairThickness}px;
+                background-color: ${cursorSettings.crosshairColor};
+                pointer-events: none;
+                z-index: 999999;
+                display: none;
+            `;
+            document.body.appendChild(crosshairVLine);
+        }
+    }
+
+    function updateCustomCursor(clientX, clientY, visible) {
+        const mode = cursorSettings.mode;
+
+        if (mode === 'dot' && customCursorElement) {
+            if (visible) {
+                customCursorElement.style.display = 'block';
+                customCursorElement.style.left = clientX + 'px';
+                customCursorElement.style.top = clientY + 'px';
+            } else {
+                customCursorElement.style.display = 'none';
+            }
+        } else if (mode === 'crosshair' && crosshairHLine && crosshairVLine) {
+            if (visible) {
+                crosshairHLine.style.display = 'block';
+                crosshairVLine.style.display = 'block';
+                crosshairHLine.style.top = clientY + 'px';
+                crosshairVLine.style.left = clientX + 'px';
+            } else {
+                crosshairHLine.style.display = 'none';
+                crosshairVLine.style.display = 'none';
+            }
+        }
+    }
+
+    // Initialize custom cursor if not default
+    if (cursorSettings.mode !== 'default') {
+        setupCustomCursor();
+
+        // Track mouse for custom cursor
+        blockContainer.addEventListener('mouseenter', () => {
+            if (cursorSettings.mode === 'dot' && customCursorElement) {
+                customCursorElement.style.display = 'block';
+            } else if (cursorSettings.mode === 'crosshair') {
+                if (crosshairHLine) crosshairHLine.style.display = 'block';
+                if (crosshairVLine) crosshairVLine.style.display = 'block';
+            }
+        });
+
+        blockContainer.addEventListener('mouseleave', () => {
+            updateCustomCursor(0, 0, false);
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            const rect = blockContainer.getBoundingClientRect();
+            const isInside = e.clientX >= rect.left && e.clientX <= rect.right &&
+                e.clientY >= rect.top && e.clientY <= rect.bottom;
+            updateCustomCursor(e.clientX, e.clientY, isInside);
+        });
     }
 
     blockContainer.addEventListener('touchstart', (e) => {
