@@ -7,7 +7,6 @@ import {
     useBlockProps,
     InnerBlocks,
     InspectorControls,
-    BlockControls,
 } from '@wordpress/block-editor';
 import {
     PanelBody,
@@ -15,48 +14,16 @@ import {
     RangeControl,
     SelectControl,
     TextControl,
-    ToolbarGroup,
-    ToolbarButton,
     Button,
 } from '@wordpress/components';
-import { useState, createElement } from '@wordpress/element';
-import { useSelect } from '@wordpress/data';
+import { useState } from '@wordpress/element';
 import InitialShapesModal from './components/InitialShapesModal';
 import ScrollAnimationsModal from './components/ScrollAnimationsModal';
 
-// Inline visibility icons
-const visibilityIcon = createElement('svg', {
-    viewBox: '0 0 24 24',
-    xmlns: 'http://www.w3.org/2000/svg',
-    width: 24,
-    height: 24
-}, createElement('path', {
-    d: 'M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z'
-}));
-
-const visibilityOffIcon = createElement('svg', {
-    viewBox: '0 0 24 24',
-    xmlns: 'http://www.w3.org/2000/svg',
-    width: 24,
-    height: 24
-}, createElement('path', {
-    d: 'M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z'
-}));
-
-export default function Edit({ attributes, setAttributes, clientId }) {
+export default function Edit({ attributes, setAttributes }) {
     const { enableFluid, fluidSettings, initialShapes } = attributes;
-    const [hideInEditor, setHideInEditor] = useState(false);
     const [shapesModalOpen, setShapesModalOpen] = useState(false);
     const [scrollModalOpen, setScrollModalOpen] = useState(false);
-
-    // Check if block has inner blocks to apply compact mode
-    const hasInnerBlocks = useSelect((select) => {
-        const { getBlockOrder } = select('core/block-editor');
-        return getBlockOrder(clientId).length > 0;
-    }, [clientId]);
-
-    // Compact mode: when block has no inner blocks, shrink to 200px to avoid editor issues
-    const isCompactMode = !hasInnerBlocks;
 
     const updateFluidSetting = (key, value) => {
         setAttributes({
@@ -98,23 +65,12 @@ export default function Edit({ attributes, setAttributes, clientId }) {
     const scrollAnimations = fluidSettings.scrollAnimations || { enabled: false, rules: [] };
 
     const blockProps = useBlockProps({
-        className: `fgb-fluid-group ${enableFluid ? 'has-fluid-background' : ''} ${hideInEditor ? 'fgb-hidden-in-editor' : ''} ${isCompactMode ? 'fgb-compact-mode' : ''}`,
-        style: isCompactMode ? { height: '200px', minHeight: '200px', maxHeight: '200px' } : undefined,
+        className: `fgb-fluid-group fgb-editor-collapsed ${enableFluid ? 'has-fluid-background' : ''}`,
     });
+
 
     return (
         <>
-            <BlockControls>
-                <ToolbarGroup>
-                    <ToolbarButton
-                        icon={hideInEditor ? visibilityOffIcon : visibilityIcon}
-                        label={hideInEditor ? __('Show Block', 'fluid-gradient-block') : __('Hide Block', 'fluid-gradient-block')}
-                        onClick={() => setHideInEditor(!hideInEditor)}
-                        isPressed={hideInEditor}
-                    />
-                </ToolbarGroup>
-            </BlockControls>
-
             <InspectorControls>
                 <PanelBody title={__('Fluid Background', 'fluid-gradient-block')} initialOpen={true}>
                     <ToggleControl
@@ -767,30 +723,16 @@ export default function Edit({ attributes, setAttributes, clientId }) {
             />
 
             <div {...blockProps}>
-                {hideInEditor ? (
-                    <div className="fgb-collapsed-placeholder">
-                        <span>{__('Fluid Gradient Group (hidden)', 'fluid-gradient-block')}</span>
-                        <button
-                            type="button"
-                            className="fgb-show-button"
-                            onClick={() => setHideInEditor(false)}
-                        >
-                            {__('Show', 'fluid-gradient-block')}
-                        </button>
-                    </div>
-                ) : (
-                    <>
-                        {enableFluid && (
-                            <div className="fgb-fluid-preview">
-                                <span>{__('Fluid Background Active', 'fluid-gradient-block')}</span>
-                            </div>
-                        )}
-                        <InnerBlocks
-                            templateLock={false}
-                            renderAppender={InnerBlocks.DefaultBlockAppender}
-                        />
-                    </>
-                )}
+                <div className="fgb-collapsed-placeholder">
+                    <span>{enableFluid ? __('Fluid Gradient Group', 'fluid-gradient-block') : __('Fluid Gradient Group (Disabled)', 'fluid-gradient-block')}</span>
+                    {enableFluid && <span className="fgb-status-badge">{__('Active', 'fluid-gradient-block')}</span>}
+                </div>
+                <div className="fgb-inner-blocks-container">
+                    <InnerBlocks
+                        templateLock={false}
+                        renderAppender={InnerBlocks.DefaultBlockAppender}
+                    />
+                </div>
             </div>
         </>
     );

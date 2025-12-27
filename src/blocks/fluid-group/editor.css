@@ -1,37 +1,18 @@
 /* Editor styles for Fluid Gradient Group Block */
 
-.fgb-fluid-group {
+/* Editor collapsed view - always show compact in editor */
+.fgb-fluid-group.fgb-editor-collapsed {
     position: relative;
-    min-height: 200px;
-    max-height: 200px;
-    overflow: hidden;
-}
-
-.fgb-fluid-group.has-fluid-background {
-    background: #000;
-}
-
-/* Editor preview label */
-.fgb-fluid-preview {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    background: rgba(99, 102, 241, 0.9);
-    color: #fff;
-    padding: 6px 12px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 500;
-    z-index: 100;
-    pointer-events: none;
-}
-
-/* Collapsed state when hidden in editor */
-.fgb-fluid-group.fgb-hidden-in-editor {
     min-height: auto !important;
+    max-height: none !important;
     height: auto !important;
 }
 
+.fgb-fluid-group.fgb-editor-collapsed.has-fluid-background {
+    background: transparent;
+}
+
+/* Collapsed placeholder header bar */
 .fgb-collapsed-placeholder {
     display: flex;
     align-items: center;
@@ -43,50 +24,27 @@
     border-radius: 4px;
     color: rgba(255, 255, 255, 0.7);
     font-size: 13px;
+    margin-bottom: 8px;
 }
 
-.fgb-show-button {
+/* Status badge for active fluid */
+.fgb-status-badge {
     background: rgba(99, 102, 241, 0.9);
     color: #fff;
-    border: none;
-    padding: 4px 12px;
-    border-radius: 3px;
-    font-size: 12px;
-    cursor: pointer;
-    transition: background 0.2s;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
 }
 
-.fgb-show-button:hover {
-    background: rgba(99, 102, 241, 1);
+/* Inner blocks container */
+.fgb-inner-blocks-container {
+    position: relative;
+    z-index: 1;
 }
 
 /* Ensure InnerBlocks content appears properly in editor */
 .fgb-fluid-group .block-editor-block-list__layout {
     position: relative;
     z-index: 1;
-}
-
-/* Compact mode for sticky background usage (no inner blocks) */
-.fgb-fluid-group.fgb-compact-mode {
-    height: 200px !important;
-    min-height: 200px !important;
-    max-height: 200px !important;
-    overflow: hidden;
-}
-
-.fgb-fluid-group.fgb-compact-mode::after {
-    content: 'Fluid Gradient Block (Compact Mode - No Inner Blocks)';
-    position: absolute;
-    bottom: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(30, 30, 46, 0.9);
-    color: rgba(255, 255, 255, 0.7);
-    padding: 6px 14px;
-    border-radius: 4px;
-    font-size: 11px;
-    white-space: nowrap;
-    z-index: 100;
-    pointer-events: none;
-    border: 1px dashed rgba(99, 102, 241, 0.5);
 }
