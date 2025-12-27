@@ -72,6 +72,7 @@
         "blendMode": "normal",
         "negativeBloom": false,
         "cssSaturate": 100,
+        "animationSpeed": 1,
         "scrollAnimations": {
           "enabled": false,
           "rules": []

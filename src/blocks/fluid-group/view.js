@@ -121,9 +121,12 @@ function initFluidSimulation(canvas, userSettings, initialShapes = []) {
     // CSS Saturate filter value (can be animated via scroll)
     let cssSaturate = userSettings.cssSaturate ?? 100;
 
+    // Animation speed (can be animated via scroll)
+    let animationSpeed = userSettings.animationSpeed ?? 1;
+
     // Live speed controls (adjustable via floating panel)
     const liveControls = {
-        speedMultiplier: 1.0,       // 0.1 - 3.0: Overall simulation speed
+        speedMultiplier: animationSpeed,       // 0.01 - 3.0: Overall simulation speed
         interactionForce: 1.0,      // 0.1 - 3.0: Mouse splat strength
         fadeMultiplier: 1.0,        // 0.5 - 2.0: Color dissipation rate
         curlMultiplier: 1.0,        // 0.1 - 3.0: Vorticity/swirl strength
@@ -847,6 +850,10 @@ function initFluidSimulation(canvas, userSettings, initialShapes = []) {
                 case 'cssSaturate':
                     cssSaturate = value;
                     updateCanvasFilter();
+                    break;
+                case 'animationSpeed':
+                    animationSpeed = value;
+                    liveControls.speedMultiplier = value;
                     break;
             }
         }

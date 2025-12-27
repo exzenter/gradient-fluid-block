@@ -706,6 +706,15 @@ export default function Edit({ attributes, setAttributes, clientId }) {
                                 step={5}
                                 help={__('Apply CSS saturate filter to canvas colors', 'fluid-gradient-block')}
                             />
+                            <RangeControl
+                                label={__('Animation Speed', 'fluid-gradient-block')}
+                                value={fluidSettings.animationSpeed ?? 1}
+                                onChange={(value) => updateFluidSetting('animationSpeed', value)}
+                                min={0.01}
+                                max={3}
+                                step={0.01}
+                                help={__('Control overall canvas animation speed', 'fluid-gradient-block')}
+                            />
                             <p style={{ fontSize: '13px', marginBottom: '12px' }}>
                                 <strong>{scrollAnimations.rules?.length || 0}</strong> {__('animation rule(s) configured', 'fluid-gradient-block')}
                             </p>
