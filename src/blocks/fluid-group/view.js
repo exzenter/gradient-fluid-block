@@ -1552,38 +1552,45 @@ function initFluidSimulation(canvas, userSettings, initialShapes = []) {
         });
     }
 
-    blockContainer.addEventListener('touchstart', (e) => {
-        const touches = e.targetTouches;
+    // Full-screen touch detection for mobile
+    // Touches anywhere on the page affect the fluid simulation (invisible overlay effect)
+    // Links and interactive elements remain clickable because we use passive mode
+    document.addEventListener('touchstart', (e) => {
+        // Use e.touches (all touches on document) not e.targetTouches (only touches on target element)
+        const touches = e.touches;
         while (touches.length >= pointers.length) {
             pointers.push(new Pointer());
         }
         for (let i = 0; i < touches.length; i++) {
             const rect = canvas.getBoundingClientRect();
-            const posX = touches[i].clientX - rect.left;
-            const posY = touches[i].clientY - rect.top;
+            // Use rect dimensions for proper screen-to-canvas coordinate mapping
+            const posX = (touches[i].clientX - rect.left) * (canvas.width / rect.width);
+            const posY = (touches[i].clientY - rect.top) * (canvas.height / rect.height);
             updatePointerDownData(pointers[i + 1], touches[i].identifier, posX, posY);
         }
     }, { passive: true });
 
-    blockContainer.addEventListener('touchmove', (e) => {
-        const touches = e.targetTouches;
+    document.addEventListener('touchmove', (e) => {
+        // Use e.touches to capture all active touches regardless of which element they started on
+        const touches = e.touches;
         for (let i = 0; i < touches.length; i++) {
             const pointer = pointers[i + 1];
             if (!pointer || !pointer.down) continue;
             const rect = canvas.getBoundingClientRect();
-            const posX = touches[i].clientX - rect.left;
-            const posY = touches[i].clientY - rect.top;
+            // Use rect dimensions for proper screen-to-canvas coordinate mapping
+            const posX = (touches[i].clientX - rect.left) * (canvas.width / rect.width);
+            const posY = (touches[i].clientY - rect.top) * (canvas.height / rect.height);
             updatePointerMoveData(pointer, posX, posY);
         }
     }, { passive: true });
 
-    blockContainer.addEventListener('touchend', (e) => {
+    document.addEventListener('touchend', (e) => {
         const touches = e.changedTouches;
         for (let i = 0; i < touches.length; i++) {
             const pointer = pointers.find(p => p.id === touches[i].identifier);
             if (pointer) pointer.down = false;
         }
-    });
+    }, { passive: true });
 
     function updatePointerDownData(pointer, id, posX, posY) {
         pointer.id = id;
@@ -1633,7 +1640,13 @@ function initFluidSimulation(canvas, userSettings, initialShapes = []) {
 
     function correctDeltaY(delta) {
         const aspectRatio = canvas.width / canvas.height;
-        if (aspectRatio > 1) delta /= aspectRatio;
+        // On landscape (aspectRatio > 1): reduce vertical delta
+        // On portrait (aspectRatio < 1): boost vertical delta to match horizontal intensity
+        if (aspectRatio > 1) {
+            delta /= aspectRatio;
+        } else if (aspectRatio < 1) {
+            delta /= aspectRatio; // This boosts it since aspectRatio < 1
+        }
         return delta;
     }
 
