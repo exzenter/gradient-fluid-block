@@ -17,11 +17,13 @@ import {
     TextControl,
     ToolbarGroup,
     ToolbarButton,
+    Button,
 } from '@wordpress/components';
-import { useState, useRef, useEffect, createElement } from '@wordpress/element';
+import { useState, createElement } from '@wordpress/element';
+import InitialShapesModal from './components/InitialShapesModal';
 
-// Inline eye icon SVG (since @wordpress/icons may not be available)
-const eyeIcon = createElement('svg', {
+// Inline visibility icons
+const visibilityIcon = createElement('svg', {
     viewBox: '0 0 24 24',
     xmlns: 'http://www.w3.org/2000/svg',
     width: 24,
@@ -30,11 +32,19 @@ const eyeIcon = createElement('svg', {
     d: 'M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z'
 }));
 
+const visibilityOffIcon = createElement('svg', {
+    viewBox: '0 0 24 24',
+    xmlns: 'http://www.w3.org/2000/svg',
+    width: 24,
+    height: 24
+}, createElement('path', {
+    d: 'M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z'
+}));
+
 export default function Edit({ attributes, setAttributes }) {
-    const { enableFluid, fluidSettings } = attributes;
-    const [livePreview, setLivePreview] = useState(false);
-    const canvasRef = useRef(null);
-    const animationRef = useRef(null);
+    const { enableFluid, fluidSettings, initialShapes } = attributes;
+    const [hideInEditor, setHideInEditor] = useState(false);
+    const [shapesModalOpen, setShapesModalOpen] = useState(false);
 
     const updateFluidSetting = (key, value) => {
         setAttributes({
@@ -61,55 +71,22 @@ export default function Edit({ attributes, setAttributes }) {
     // Get element interaction settings with defaults
     const elemInteraction = fluidSettings.elementInteraction || {};
 
-    // Initialize fluid simulation when live preview is enabled
-    useEffect(() => {
-        let timeoutId;
-        let cleanupFn = null;
-
-        if (livePreview && enableFluid && canvasRef.current) {
-            // Delay initialization to ensure canvas has proper dimensions
-            timeoutId = setTimeout(() => {
-                if (canvasRef.current) {
-                    cleanupFn = initFluidSimulation(canvasRef.current, fluidSettings, animationRef);
-                }
-            }, 100);
-        }
-
-        return () => {
-            // Cleanup timeout
-            if (timeoutId) {
-                clearTimeout(timeoutId);
-            }
-            // Cleanup animation on unmount or when preview is disabled
-            if (animationRef.current) {
-                cancelAnimationFrame(animationRef.current);
-                animationRef.current = null;
-            }
-            // Additional cleanup if provided
-            if (cleanupFn) {
-                cleanupFn();
-            }
-        };
-    }, [livePreview, enableFluid]);
-
     const blockProps = useBlockProps({
-        className: `fgb-fluid-group ${enableFluid ? 'has-fluid-background' : ''}`,
+        className: `fgb-fluid-group ${enableFluid ? 'has-fluid-background' : ''} ${hideInEditor ? 'fgb-hidden-in-editor' : ''}`,
     });
 
     return (
         <>
-            {enableFluid && (
-                <BlockControls>
-                    <ToolbarGroup>
-                        <ToolbarButton
-                            icon={eyeIcon}
-                            label={livePreview ? __('Stop Preview', 'fluid-gradient-block') : __('Live Preview', 'fluid-gradient-block')}
-                            onClick={() => setLivePreview(!livePreview)}
-                            isPressed={livePreview}
-                        />
-                    </ToolbarGroup>
-                </BlockControls>
-            )}
+            <BlockControls>
+                <ToolbarGroup>
+                    <ToolbarButton
+                        icon={hideInEditor ? visibilityOffIcon : visibilityIcon}
+                        label={hideInEditor ? __('Show Block', 'fluid-gradient-block') : __('Hide Block', 'fluid-gradient-block')}
+                        onClick={() => setHideInEditor(!hideInEditor)}
+                        isPressed={hideInEditor}
+                    />
+                </ToolbarGroup>
+            </BlockControls>
 
             <InspectorControls>
                 <PanelBody title={__('Fluid Background', 'fluid-gradient-block')} initialOpen={true}>
@@ -233,15 +210,6 @@ export default function Edit({ attributes, setAttributes }) {
                                 max={5}
                                 step={0.25}
                                 help={__('How far colors shoot in mouse direction', 'fluid-gradient-block')}
-                            />
-                            <RangeControl
-                                label={__('Fade Speed', 'fluid-gradient-block')}
-                                value={fluidSettings.fadeSpeed || 1}
-                                onChange={(value) => updateFluidSetting('fadeSpeed', value)}
-                                min={0.1}
-                                max={3}
-                                step={0.1}
-                                help={__('How quickly colors fade out (higher = faster)', 'fluid-gradient-block')}
                             />
                         </PanelBody>
 
@@ -395,6 +363,15 @@ export default function Edit({ attributes, setAttributes }) {
                                 checked={fluidSettings.darkMode}
                                 onChange={(value) => updateFluidSetting('darkMode', value)}
                                 help={__('Creates dark fluid effect (use with light background)', 'fluid-gradient-block')}
+                            />
+                            <RangeControl
+                                label={__('Fade Speed', 'fluid-gradient-block')}
+                                value={fluidSettings.fadeSpeed || 1}
+                                onChange={(value) => updateFluidSetting('fadeSpeed', value)}
+                                min={0.01}
+                                max={15}
+                                step={0.01}
+                                help={__('How quickly colors fade out (higher = faster)', 'fluid-gradient-block')}
                             />
                             <hr style={{ margin: '20px 0', borderColor: '#ddd' }} />
                             <SelectControl
@@ -683,339 +660,60 @@ export default function Edit({ attributes, setAttributes }) {
                                 </>
                             )}
                         </PanelBody>
+
+                        <PanelBody title={__('Initial Shapes', 'fluid-gradient-block')} initialOpen={false}>
+                            <p style={{ fontSize: '12px', color: '#757575', marginBottom: '12px' }}>
+                                {__('Configure shapes that fire on page load to create dynamic starting patterns.', 'fluid-gradient-block')}
+                            </p>
+                            <p style={{ fontSize: '13px', marginBottom: '12px' }}>
+                                <strong>{(initialShapes || []).length}</strong> {__('shape(s) configured', 'fluid-gradient-block')}
+                            </p>
+                            <Button
+                                variant="secondary"
+                                onClick={() => setShapesModalOpen(true)}
+                                style={{ width: '100%' }}
+                            >
+                                {__('Edit Initial Shapes', 'fluid-gradient-block')}
+                            </Button>
+                        </PanelBody>
                     </>
                 )}
             </InspectorControls>
 
+            <InitialShapesModal
+                isOpen={shapesModalOpen}
+                onClose={() => setShapesModalOpen(false)}
+                shapes={initialShapes || []}
+                onSave={(shapes) => setAttributes({ initialShapes: shapes })}
+            />
+
             <div {...blockProps}>
-                {enableFluid && livePreview && (
-                    <canvas
-                        ref={canvasRef}
-                        className="fgb-fluid-canvas fgb-editor-canvas"
-                        style={{
-                            mixBlendMode: fluidSettings.blendMode || 'normal',
-                            filter: fluidSettings.negativeBloom ? 'invert(1)' : 'none',
-                        }}
-                    />
-                )}
-                {enableFluid && !livePreview && (
-                    <div className="fgb-fluid-preview">
-                        <span>{__('Fluid Background Active (Click eye icon for preview)', 'fluid-gradient-block')}</span>
+                {hideInEditor ? (
+                    <div className="fgb-collapsed-placeholder">
+                        <span>{__('Fluid Gradient Group (hidden)', 'fluid-gradient-block')}</span>
+                        <button
+                            type="button"
+                            className="fgb-show-button"
+                            onClick={() => setHideInEditor(false)}
+                        >
+                            {__('Show', 'fluid-gradient-block')}
+                        </button>
                     </div>
+                ) : (
+                    <>
+                        {enableFluid && (
+                            <div className="fgb-fluid-preview">
+                                <span>{__('Fluid Background Active', 'fluid-gradient-block')}</span>
+                            </div>
+                        )}
+                        <InnerBlocks
+                            templateLock={false}
+                            renderAppender={InnerBlocks.DefaultBlockAppender}
+                        />
+                    </>
                 )}
-                <InnerBlocks
-                    templateLock={false}
-                    renderAppender={InnerBlocks.DefaultBlockAppender}
-                />
             </div>
         </>
     );
 }
 
-/**
- * Minimal fluid simulation for editor preview
- */
-function initFluidSimulation(canvas, userSettings, animationRef) {
-    const config = {
-        SIM_RESOLUTION: Math.min(userSettings.simResolution ?? 128, 64), // Lower res for editor
-        DYE_RESOLUTION: Math.min(userSettings.dyeResolution ?? 1024, 512), // Lower res for editor
-        DENSITY_DISSIPATION: userSettings.densityDissipation ?? 0.97,
-        VELOCITY_DISSIPATION: userSettings.velocityDissipation ?? 0.98,
-        PRESSURE: userSettings.pressure ?? 0.8,
-        PRESSURE_ITERATIONS: 10, // Fewer iterations for editor
-        CURL: userSettings.curl ?? 30,
-        SPLAT_RADIUS: userSettings.splatRadius ?? 0.25,
-        SPLAT_FORCE: userSettings.splatForce ?? 6000,
-        PROJECTION_DISTANCE: userSettings.projectionDistance ?? 1,
-        FADE_SPEED: userSettings.fadeSpeed ?? 1,
-        BLOOM: false, // Disable bloom in editor for performance
-        BLOOM_INTENSITY: 0,
-        BLOOM_THRESHOLD: 0.6,
-    };
-
-    const colorSettings = {
-        saturation: userSettings.colorSaturation ?? 1.0,
-        brightness: userSettings.colorBrightness ?? 0.15,
-        saturationBoost: userSettings.saturationBoost ?? 1.0,
-        fixedColor: userSettings.fixedColor ?? '#ff00ff',
-        rainbowMode: userSettings.rainbowMode !== false,
-        preventOverblending: userSettings.preventOverblending ?? false,
-        maxColorIntensity: userSettings.maxColorIntensity ?? 1.0,
-        darkMode: userSettings.darkMode ?? false,
-    };
-
-    // Get WebGL context
-    const params = { alpha: true, depth: false, stencil: false, antialias: false, preserveDrawingBuffer: false };
-    let gl = canvas.getContext('webgl2', params);
-    const isWebGL2 = !!gl;
-    if (!isWebGL2) {
-        gl = canvas.getContext('webgl', params) || canvas.getContext('experimental-webgl', params);
-    }
-    if (!gl) {
-        console.error('WebGL not supported');
-        return;
-    }
-
-    // Resize canvas - use multiple methods to get dimensions
-    const container = canvas.parentElement;
-    const rect = canvas.getBoundingClientRect();
-
-    // Try multiple ways to get dimensions
-    let width = rect.width || container?.offsetWidth || container?.clientWidth || 400;
-    let height = rect.height || container?.offsetHeight || container?.clientHeight || 200;
-
-    // Minimum dimensions
-    width = Math.max(width, 200);
-    height = Math.max(height, 100);
-
-    canvas.width = width;
-    canvas.height = height;
-
-    console.log('Editor preview canvas:', width, 'x', height);
-
-    let halfFloat, formatRGBA, formatRG, formatR;
-    if (isWebGL2) {
-        gl.getExtension('EXT_color_buffer_float');
-        halfFloat = gl.HALF_FLOAT;
-        formatRGBA = { internalFormat: gl.RGBA16F, format: gl.RGBA };
-        formatRG = { internalFormat: gl.RG16F, format: gl.RG };
-        formatR = { internalFormat: gl.R16F, format: gl.RED };
-    } else {
-        const ext = gl.getExtension('OES_texture_half_float');
-        halfFloat = ext ? ext.HALF_FLOAT_OES : gl.UNSIGNED_BYTE;
-        formatRGBA = formatRG = formatR = { internalFormat: gl.RGBA, format: gl.RGBA };
-    }
-
-    gl.clearColor(0.0, 0.0, 0.0, 1.0);
-
-    // Simple shaders
-    const baseVS = `
-        precision highp float;
-        attribute vec2 aPosition;
-        varying vec2 vUv;
-        void main() {
-            vUv = aPosition * 0.5 + 0.5;
-            gl_Position = vec4(aPosition, 0.0, 1.0);
-        }
-    `;
-
-    const displayFS = `
-        precision highp float;
-        varying vec2 vUv;
-        uniform sampler2D uTexture;
-        void main() {
-            vec3 c = texture2D(uTexture, vUv).rgb;
-            float a = max(c.r, max(c.g, c.b));
-            gl_FragColor = vec4(c, a);
-        }
-    `;
-
-    const splatFS = `
-        precision highp float;
-        varying vec2 vUv;
-        uniform sampler2D uTarget;
-        uniform float aspectRatio;
-        uniform vec3 color;
-        uniform vec2 point;
-        uniform float radius;
-        void main() {
-            vec2 p = vUv - point.xy;
-            p.x *= aspectRatio;
-            vec3 splat = exp(-dot(p, p) / radius) * color;
-            vec3 base = texture2D(uTarget, vUv).xyz;
-            gl_FragColor = vec4(base + splat, 1.0);
-        }
-    `;
-
-    const clearFS = `
-        precision mediump float;
-        varying vec2 vUv;
-        uniform sampler2D uTexture;
-        uniform float value;
-        void main() {
-            gl_FragColor = value * texture2D(uTexture, vUv);
-        }
-    `;
-
-    function compileShader(type, source) {
-        const shader = gl.createShader(type);
-        gl.shaderSource(shader, source);
-        gl.compileShader(shader);
-        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-            console.error('Shader error:', gl.getShaderInfoLog(shader));
-            return null;
-        }
-        return shader;
-    }
-
-    function createProgram(vs, fs) {
-        const v = compileShader(gl.VERTEX_SHADER, vs);
-        const f = compileShader(gl.FRAGMENT_SHADER, fs);
-        if (!v || !f) return null;
-        const p = gl.createProgram();
-        gl.attachShader(p, v);
-        gl.attachShader(p, f);
-        gl.linkProgram(p);
-        const uniforms = {};
-        const count = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
-        for (let i = 0; i < count; i++) {
-            const name = gl.getActiveUniform(p, i).name;
-            uniforms[name] = gl.getUniformLocation(p, name);
-        }
-        return { program: p, uniforms };
-    }
-
-    const displayProg = createProgram(baseVS, displayFS);
-    const splatProg = createProgram(baseVS, splatFS);
-    const clearProg = createProgram(baseVS, clearFS);
-
-    if (!displayProg || !splatProg || !clearProg) return;
-
-    // Vertex buffer
-    const vb = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, vb);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, -1, 1, 1, 1, 1, -1]), gl.STATIC_DRAW);
-    const ib = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array([0, 1, 2, 0, 2, 3]), gl.STATIC_DRAW);
-
-    function createFBO(w, h) {
-        const tex = gl.createTexture();
-        gl.bindTexture(gl.TEXTURE_2D, tex);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texImage2D(gl.TEXTURE_2D, 0, formatRGBA.internalFormat, w, h, 0, formatRGBA.format, halfFloat, null);
-        const fbo = gl.createFramebuffer();
-        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-        return { texture: tex, fbo, width: w, height: h, attach(id) { gl.activeTexture(gl.TEXTURE0 + id); gl.bindTexture(gl.TEXTURE_2D, tex); return id; } };
-    }
-
-    function createDoubleFBO(w, h) {
-        let f1 = createFBO(w, h), f2 = createFBO(w, h);
-        return {
-            get read() { return f1; },
-            get write() { return f2; },
-            swap() { const t = f1; f1 = f2; f2 = t; }
-        };
-    }
-
-    const dyeRes = Math.min(config.DYE_RESOLUTION, canvas.width, canvas.height);
-    const dye = createDoubleFBO(dyeRes, dyeRes);
-
-    function blit(target) {
-        if (!target) {
-            gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
-            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        } else {
-            gl.viewport(0, 0, target.width, target.height);
-            gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
-        }
-        gl.bindBuffer(gl.ARRAY_BUFFER, vb);
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib);
-        gl.enableVertexAttribArray(0);
-        gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-        gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
-    }
-
-    function HSVtoRGB(h, s, v) {
-        let r, g, b;
-        const i = Math.floor(h * 6);
-        const f = h * 6 - i;
-        const p = v * (1 - s);
-        const q = v * (1 - f * s);
-        const t = v * (1 - (1 - f) * s);
-        switch (i % 6) {
-            case 0: r = v; g = t; b = p; break;
-            case 1: r = q; g = v; b = p; break;
-            case 2: r = p; g = v; b = t; break;
-            case 3: r = p; g = q; b = v; break;
-            case 4: r = t; g = p; b = v; break;
-            case 5: r = v; g = p; b = q; break;
-        }
-        return { r, g, b };
-    }
-
-    function hexToRGB(hex) {
-        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        return result ? {
-            r: parseInt(result[1], 16) / 255,
-            g: parseInt(result[2], 16) / 255,
-            b: parseInt(result[3], 16) / 255
-        } : { r: 1, g: 0, b: 1 };
-    }
-
-    function generateColor() {
-        let c;
-        if (colorSettings.rainbowMode) {
-            const sat = Math.min(colorSettings.saturation * colorSettings.saturationBoost, 1.0);
-            c = HSVtoRGB(Math.random(), sat, 1.0);
-        } else {
-            c = hexToRGB(colorSettings.fixedColor);
-        }
-        c.r *= colorSettings.brightness;
-        c.g *= colorSettings.brightness;
-        c.b *= colorSettings.brightness;
-        if (colorSettings.preventOverblending) {
-            const max = colorSettings.maxColorIntensity;
-            c.r = Math.min(c.r, max);
-            c.g = Math.min(c.g, max);
-            c.b = Math.min(c.b, max);
-        }
-        if (colorSettings.darkMode) {
-            c.r = -c.r;
-            c.g = -c.g;
-            c.b = -c.b;
-        }
-        return c;
-    }
-
-    function splat(x, y, dx, dy, color) {
-        gl.useProgram(splatProg.program);
-        gl.uniform1i(splatProg.uniforms.uTarget, dye.read.attach(0));
-        gl.uniform1f(splatProg.uniforms.aspectRatio, canvas.width / canvas.height);
-        gl.uniform2f(splatProg.uniforms.point, x, y);
-        gl.uniform3f(splatProg.uniforms.color, color.r, color.g, color.b);
-        gl.uniform1f(splatProg.uniforms.radius, config.SPLAT_RADIUS / 100);
-        blit(dye.write);
-        dye.swap();
-    }
-
-    // Mouse handling
-    let pointer = { x: 0, y: 0, px: 0, py: 0, down: false };
-
-    canvas.addEventListener('mousemove', (e) => {
-        const rect = canvas.getBoundingClientRect();
-        pointer.px = pointer.x;
-        pointer.py = pointer.y;
-        pointer.x = (e.clientX - rect.left) / rect.width;
-        pointer.y = 1 - (e.clientY - rect.top) / rect.height;
-        const dx = (pointer.x - pointer.px) * config.SPLAT_FORCE * config.PROJECTION_DISTANCE;
-        const dy = (pointer.y - pointer.py) * config.SPLAT_FORCE * config.PROJECTION_DISTANCE;
-        if (Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001) {
-            splat(pointer.x, pointer.y, dx, dy, generateColor());
-        }
-    });
-
-    // Animation loop
-    function update() {
-        // Apply dissipation
-        gl.useProgram(clearProg.program);
-        gl.uniform1i(clearProg.uniforms.uTexture, dye.read.attach(0));
-        gl.uniform1f(clearProg.uniforms.value, config.DENSITY_DISSIPATION / config.FADE_SPEED);
-        blit(dye.write);
-        dye.swap();
-
-        // Display
-        gl.useProgram(displayProg.program);
-        gl.uniform1i(displayProg.uniforms.uTexture, dye.read.attach(0));
-        blit(null);
-
-        animationRef.current = requestAnimationFrame(update);
-    }
-
-    update();
-}

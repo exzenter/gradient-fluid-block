@@ -11,7 +11,9 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!canvas) return;
 
         const settingsAttr = block.getAttribute('data-fluid-settings');
+        const shapesAttr = block.getAttribute('data-initial-shapes');
         let settings = {};
+        let initialShapes = [];
 
         try {
             settings = JSON.parse(settingsAttr) || {};
@@ -19,15 +21,21 @@ document.addEventListener('DOMContentLoaded', function () {
             console.error('Failed to parse fluid settings:', e);
         }
 
+        try {
+            initialShapes = shapesAttr ? JSON.parse(shapesAttr) : [];
+        } catch (e) {
+            console.error('Failed to parse initial shapes:', e);
+        }
+
         // Initialize fluid simulation on this canvas
-        initFluidSimulation(canvas, settings);
+        initFluidSimulation(canvas, settings, initialShapes);
     });
 });
 
 /**
  * Initialize WebGL Fluid Simulation
  */
-function initFluidSimulation(canvas, userSettings) {
+function initFluidSimulation(canvas, userSettings, initialShapes = []) {
     // Default configuration - use explicit undefined checks for values that can be 0
     const config = {
         SIM_RESOLUTION: userSettings.simResolution ?? 128,
@@ -102,6 +110,21 @@ function initFluidSimulation(canvas, userSettings) {
         crosshairColor: userSettings.crosshairCursor?.color ?? '#ffffff',
         siblingHoverMode: userSettings.siblingHoverMode ?? false,
     };
+
+    // Live speed controls (adjustable via floating panel)
+    const liveControls = {
+        speedMultiplier: 1.0,       // 0.1 - 3.0: Overall simulation speed
+        interactionForce: 1.0,      // 0.1 - 3.0: Mouse splat strength
+        fadeMultiplier: 1.0,        // 0.5 - 2.0: Color dissipation rate
+        curlMultiplier: 1.0,        // 0.1 - 3.0: Vorticity/swirl strength
+        pressureIterations: config.PRESSURE_ITERATIONS, // 5 - 40
+        frameLimitEnabled: false,   // Enable FPS limiting
+        targetFPS: 60,              // 0.2 - 60 (0.2 = 1 frame per 5 sec)
+        paused: false,              // Pause simulation
+    };
+
+    // Frame timing for frame limiter
+    let lastFrameTime = 0;
 
     // Obstacle/element bounds storage
     let obstacleBounds = [];
@@ -907,9 +930,24 @@ function initFluidSimulation(canvas, userSettings) {
     // Update loop
     let lastUpdateTime = Date.now();
 
-    function update() {
+    function update(timestamp) {
+        // Check if paused
+        if (liveControls.paused) {
+            requestAnimationFrame(update);
+            return;
+        }
+
+        // Frame limiter - skip frame if not enough time has passed
+        if (liveControls.frameLimitEnabled) {
+            const minFrameTime = 1000 / liveControls.targetFPS;
+            if (timestamp - lastFrameTime < minFrameTime) {
+                requestAnimationFrame(update);
+                return;
+            }
+            lastFrameTime = timestamp;
+        }
+
         const dt = calcDeltaTime();
-        // Don't resize every frame - only on window resize
         applyInputs();
         step(dt);
         render(null);
@@ -921,7 +959,8 @@ function initFluidSimulation(canvas, userSettings) {
         let dt = (now - lastUpdateTime) / 1000;
         dt = Math.min(dt, 0.016666);
         lastUpdateTime = now;
-        return dt;
+        // Apply speed multiplier
+        return dt * liveControls.speedMultiplier;
     }
 
     function applyInputs() {
@@ -947,7 +986,7 @@ function initFluidSimulation(canvas, userSettings) {
         gl.uniform2f(programs.vorticity.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY);
         gl.uniform1i(programs.vorticity.uniforms.uVelocity, velocity.read.attach(0));
         gl.uniform1i(programs.vorticity.uniforms.uCurl, curlFBO.attach(1));
-        gl.uniform1f(programs.vorticity.uniforms.curl, config.CURL);
+        gl.uniform1f(programs.vorticity.uniforms.curl, config.CURL * liveControls.curlMultiplier);
         gl.uniform1f(programs.vorticity.uniforms.dt, dt);
         blit(velocity.write);
         velocity.swap();
@@ -969,7 +1008,7 @@ function initFluidSimulation(canvas, userSettings) {
         gl.useProgram(programs.pressure.program);
         gl.uniform2f(programs.pressure.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY);
         gl.uniform1i(programs.pressure.uniforms.uDivergence, divergenceFBO.attach(0));
-        for (let i = 0; i < config.PRESSURE_ITERATIONS; i++) {
+        for (let i = 0; i < liveControls.pressureIterations; i++) {
             gl.uniform1i(programs.pressure.uniforms.uPressure, pressure.read.attach(1));
             blit(pressure.write);
             pressure.swap();
@@ -1011,7 +1050,7 @@ function initFluidSimulation(canvas, userSettings) {
         gl.uniform2f(programs.advection.uniforms.dyeTexelSize, dye.texelSizeX, dye.texelSizeY);
         gl.uniform1i(programs.advection.uniforms.uVelocity, velocity.read.attach(0));
         gl.uniform1i(programs.advection.uniforms.uSource, dye.read.attach(1));
-        const adjustedDissipation = config.DENSITY_DISSIPATION / config.FADE_SPEED;
+        const adjustedDissipation = (config.DENSITY_DISSIPATION / config.FADE_SPEED) * liveControls.fadeMultiplier;
         gl.uniform1f(programs.advection.uniforms.dissipation, adjustedDissipation);
         blit(dye.write);
         dye.swap();
@@ -1313,8 +1352,8 @@ function initFluidSimulation(canvas, userSettings) {
 
     function splatPointer(pointer) {
         // Apply projection distance multiplier to shoot colors further in mouse direction
-        let dx = pointer.deltaX * config.SPLAT_FORCE * config.PROJECTION_DISTANCE;
-        let dy = pointer.deltaY * config.SPLAT_FORCE * config.PROJECTION_DISTANCE;
+        let dx = pointer.deltaX * config.SPLAT_FORCE * config.PROJECTION_DISTANCE * liveControls.interactionForce;
+        let dy = pointer.deltaY * config.SPLAT_FORCE * config.PROJECTION_DISTANCE * liveControls.interactionForce;
         let color = pointer.color;
 
         // Only check obstacle interaction if affectNewSplats is enabled
@@ -1613,8 +1652,275 @@ function initFluidSimulation(canvas, userSettings) {
         }
     }
 
-    // Start with initial splats
-    multipleSplats(parseInt(Math.random() * 5) + 5);
+    // Speed controls panel removed - controls configured via editor only
+
+    // Execute initial shapes on page load
+    function executeInitialShapes() {
+        if (!initialShapes || initialShapes.length === 0) {
+            // Fall back to random splats if no shapes configured
+            multipleSplats(parseInt(Math.random() * 5) + 5);
+            return;
+        }
+
+        // Generate path points for a shape
+        function generatePathPoints(shape, x, y, angleOffset, sizeMultiplier = 1) {
+            const points = [];
+            const props = shape.props || {};
+            const sizeMult = sizeMultiplier || 1;
+
+            switch (shape.type) {
+                case 'stroke': {
+                    const length = ((props.length || 100) * sizeMult) / canvas.width;
+                    const angle = ((props.angle || 0) * Math.PI / 180) + angleOffset;
+                    const steps = 30;
+                    for (let i = 0; i <= steps; i++) {
+                        const t = i / steps;
+                        points.push({
+                            x: x + (t - 0.5) * length * Math.cos(angle),
+                            y: y + (t - 0.5) * length * Math.sin(angle)
+                        });
+                    }
+                    break;
+                }
+                case 'circle': {
+                    const radius = ((props.radius || 50) * sizeMult) / canvas.width;
+                    const steps = 36;
+                    for (let i = 0; i <= steps; i++) {
+                        const angle = (i / steps) * Math.PI * 2 + angleOffset;
+                        points.push({
+                            x: x + Math.cos(angle) * radius,
+                            y: y + Math.sin(angle) * radius
+                        });
+                    }
+                    break;
+                }
+                case 'ellipse': {
+                    const rx = ((props.radiusX || 60) * sizeMult) / canvas.width;
+                    const ry = ((props.radiusY || 40) * sizeMult) / canvas.height;
+                    const rotation = ((props.rotation || 0) * Math.PI / 180) + angleOffset;
+                    const steps = 36;
+                    for (let i = 0; i <= steps; i++) {
+                        const angle = (i / steps) * Math.PI * 2;
+                        const ex = Math.cos(angle) * rx;
+                        const ey = Math.sin(angle) * ry;
+                        points.push({
+                            x: x + ex * Math.cos(rotation) - ey * Math.sin(rotation),
+                            y: y + ex * Math.sin(rotation) + ey * Math.cos(rotation)
+                        });
+                    }
+                    break;
+                }
+                case 'rectangle': {
+                    const w = ((props.width || 80) * sizeMult) / canvas.width;
+                    const h = ((props.height || 50) * sizeMult) / canvas.height;
+                    const rotation = ((props.rotation || 0) * Math.PI / 180) + angleOffset;
+                    const corners = [
+                        [-w / 2, -h / 2], [w / 2, -h / 2], [w / 2, h / 2], [-w / 2, h / 2], [-w / 2, -h / 2]
+                    ];
+                    const stepsPerSide = 8;
+                    for (let c = 0; c < 4; c++) {
+                        for (let i = 0; i <= stepsPerSide; i++) {
+                            const t = i / stepsPerSide;
+                            const lx = corners[c][0] + t * (corners[c + 1][0] - corners[c][0]);
+                            const ly = corners[c][1] + t * (corners[c + 1][1] - corners[c][1]);
+                            points.push({
+                                x: x + lx * Math.cos(rotation) - ly * Math.sin(rotation),
+                                y: y + lx * Math.sin(rotation) + ly * Math.cos(rotation)
+                            });
+                        }
+                    }
+                    break;
+                }
+                case 'svg':
+                case 'path': {
+                    const pathData = props.pathData || props.points || '';
+                    const rotation = ((props.rotation || 0) * Math.PI / 180) + angleOffset;
+                    const userScale = props.scale || 1;
+
+                    let rawPoints = [];
+                    let isDrawnPath = false;
+
+                    if (Array.isArray(pathData)) {
+                        // Drawn path - points are in % coordinates (0-100)
+                        rawPoints = pathData;
+                        isDrawnPath = true;
+                    } else if (typeof pathData === 'string') {
+                        // SVG path string - points need scaling
+                        const matches = pathData.match(/[-\d.]+/g);
+                        if (matches) {
+                            for (let i = 0; i < matches.length - 1; i += 2) {
+                                rawPoints.push({ x: parseFloat(matches[i]), y: parseFloat(matches[i + 1]) });
+                            }
+                        }
+                    }
+
+                    if (isDrawnPath && rawPoints.length > 0) {
+                        // Drawn paths: points are already in % (0-100)
+                        // Convert directly to 0-1 range, apply scale around center
+                        const centerX = rawPoints.reduce((sum, p) => sum + p.x, 0) / rawPoints.length;
+                        const centerY = rawPoints.reduce((sum, p) => sum + p.y, 0) / rawPoints.length;
+
+                        for (const pt of rawPoints) {
+                            // Scale around the path's center
+                            const dx = (pt.x - centerX) * userScale;
+                            const dy = (pt.y - centerY) * userScale;
+                            const px = (centerX + dx) / 100;
+                            const py = 1 - (centerY + dy) / 100; // Flip Y for WebGL
+
+                            // Apply rotation around center
+                            const rx = px - 0.5;
+                            const ry = py - 0.5;
+                            points.push({
+                                x: 0.5 + rx * Math.cos(rotation) - ry * Math.sin(rotation),
+                                y: 0.5 + rx * Math.sin(rotation) + ry * Math.cos(rotation)
+                            });
+                        }
+                    } else {
+                        // SVG paths: use relative positioning from shape position
+                        for (const pt of rawPoints) {
+                            const baseScale = 0.002 * userScale;
+                            const sx = pt.x * baseScale;
+                            const sy = pt.y * baseScale;
+                            points.push({
+                                x: x + sx * Math.cos(rotation) - sy * Math.sin(rotation),
+                                y: y + sx * Math.sin(rotation) + sy * Math.cos(rotation)
+                            });
+                        }
+                    }
+                    break;
+                }
+            }
+
+            return points;
+        }
+
+        // Smooth animation along path using requestAnimationFrame
+        function animateAlongPath(points, duration, speed, baseColor, force, colorSpeed) {
+            if (points.length < 2) return;
+
+            const startTime = performance.now();
+            const forceMultiplier = 400 * speed * (force || 1);
+            let lastX = points[0].x;
+            let lastY = points[0].y;
+            const hueShiftRate = colorSpeed || 0; // 0 = no shift
+
+            function animate(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+
+                // Get current position on path with smooth interpolation
+                const pathPos = progress * (points.length - 1);
+                const idx = Math.floor(pathPos);
+                const t = pathPos - idx;
+
+                const p1 = points[Math.min(idx, points.length - 1)];
+                const p2 = points[Math.min(idx + 1, points.length - 1)];
+
+                // Smooth cubic interpolation for position
+                const smoothT = t * t * (3 - 2 * t);
+                const currentX = p1.x + smoothT * (p2.x - p1.x);
+                const currentY = p1.y + smoothT * (p2.y - p1.y);
+
+                // Calculate delta - key for natural fluid response
+                const deltaX = (currentX - lastX) * forceMultiplier;
+                const deltaY = (currentY - lastY) * forceMultiplier;
+
+                // Apply color speed - shift hue based on progress
+                let color = baseColor;
+                if (hueShiftRate > 0) {
+                    const hueShift = progress * hueShiftRate;
+                    // Rotate RGB values to simulate hue shift
+                    color = {
+                        r: (baseColor.r + hueShift * 0.5) % 1,
+                        g: (baseColor.g + hueShift * 0.3) % 1,
+                        b: (baseColor.b + hueShift * 0.7) % 1
+                    };
+                }
+
+                // Splat with movement direction
+                if (Math.abs(deltaX) > 0.01 || Math.abs(deltaY) > 0.01) {
+                    splat(currentX, currentY, deltaX, deltaY, color);
+                }
+
+                lastX = currentX;
+                lastY = currentY;
+
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        initialShapes.forEach((shape) => {
+            const randomOffset = (range) => {
+                if (!range || range.length < 2) return 0;
+                return range[0] + Math.random() * (range[1] - range[0]);
+            };
+
+            // Helper to parse hex color to RGB object
+            const hexToRgb = (hex) => {
+                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                return result ? {
+                    r: parseInt(result[1], 16) / 255,
+                    g: parseInt(result[2], 16) / 255,
+                    b: parseInt(result[3], 16) / 255
+                } : null;
+            };
+
+            const delay = shape.timing?.delay || 0;
+            const duration = shape.timing?.duration || 500;
+            const repeat = shape.timing?.repeat || 0;
+            const repeatDelay = shape.timing?.repeatDelay || 0;
+            const shouldRandomizeColor = shape.randomizeColor !== false;
+
+            // Pre-generate color if not randomizing per repeat
+            const cachedColor = !shouldRandomizeColor ? generateColor() : null;
+
+            // Execute with fresh randomization each time
+            const executeShape = () => {
+                // Apply fresh randomization for each execution
+                const x = (shape.x + randomOffset(shape.random?.x)) / 100;
+                const y = 1 - (shape.y + randomOffset(shape.random?.y)) / 100;
+                const angleOffset = randomOffset(shape.random?.angle) * (Math.PI / 180);
+                const speedOffset = randomOffset(shape.random?.speed);
+                const speed = (shape.props?.speed || 1) + speedOffset;
+                const sizeMultiplier = 1 + (randomOffset(shape.random?.size) / 100); // Convert % to multiplier
+                const forceOffset = randomOffset(shape.random?.force);
+                const force = (shape.force || 1) + forceOffset;
+
+                const points = generatePathPoints(shape, x, y, angleOffset, sizeMultiplier);
+
+                // Handle color mode
+                let color;
+                if (shape.colorMode === 'fixed' && shape.color) {
+                    color = hexToRgb(shape.color) || generateColor();
+                } else if (cachedColor) {
+                    // Use cached color when not randomizing
+                    color = cachedColor;
+                } else {
+                    // Fresh random color each repeat
+                    color = generateColor();
+                }
+
+                animateAlongPath(points, duration, speed, color, force, shape.colorSpeed);
+            };
+
+            const scheduleExecution = (iteration) => {
+                const totalDelay = delay + (iteration * (duration + repeatDelay));
+                setTimeout(executeShape, totalDelay);
+            };
+
+            scheduleExecution(0);
+            for (let r = 1; r <= repeat; r++) {
+                scheduleExecution(r);
+            }
+        });
+    }
+
+    // Execute initial shapes (or fall back to random splats)
+    executeInitialShapes();
 
     // Start animation loop
     update();

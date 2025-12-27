@@ -102,6 +102,10 @@
         },
         "backgroundColor": {
             "type": "string"
+        },
+        "initialShapes": {
+            "type": "array",
+            "default": []
         }
     },
     "supports": {
