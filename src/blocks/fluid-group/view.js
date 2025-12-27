@@ -111,6 +111,16 @@ function initFluidSimulation(canvas, userSettings, initialShapes = []) {
         siblingHoverMode: userSettings.siblingHoverMode ?? false,
     };
 
+    // Scroll Animations settings
+    const scrollAnimationsSettings = userSettings.scrollAnimations || {};
+    const scrollAnimations = {
+        enabled: scrollAnimationsSettings.enabled ?? false,
+        rules: scrollAnimationsSettings.rules ?? [],
+    };
+
+    // CSS Saturate filter value (can be animated via scroll)
+    let cssSaturate = userSettings.cssSaturate ?? 100;
+
     // Live speed controls (adjustable via floating panel)
     const liveControls = {
         speedMultiplier: 1.0,       // 0.1 - 3.0: Overall simulation speed
@@ -178,9 +188,17 @@ function initFluidSimulation(canvas, userSettings, initialShapes = []) {
 
     // Apply canvas blend and filter styles
     canvas.style.mixBlendMode = colorSettings.blendMode;
-    if (colorSettings.negativeBloom) {
-        canvas.style.filter = 'invert(1)';
+
+    // Build initial filter string
+    function updateCanvasFilter() {
+        let filters = [];
+        if (colorSettings.negativeBloom) {
+            filters.push('invert(1)');
+        }
+        filters.push(`saturate(${cssSaturate}%)`);
+        canvas.style.filter = filters.join(' ');
     }
+    updateCanvasFilter();
 
     // Pointer tracking
     class Pointer {
@@ -790,6 +808,70 @@ function initFluidSimulation(canvas, userSettings, initialShapes = []) {
     if (elementInteraction.enabled) {
         // Delay to ensure DOM is ready
         setTimeout(updateObstacleBounds, 200);
+    }
+
+    // Scroll Animations - interpolate settings based on scroll position
+    if (scrollAnimations.enabled && scrollAnimations.rules.length > 0) {
+        // Linear interpolation with clamping
+        function interpolateValue(scrollY, scrollStart, scrollEnd, valueStart, valueEnd) {
+            if (scrollY <= scrollStart) return valueStart;
+            if (scrollY >= scrollEnd) return valueEnd;
+            const progress = (scrollY - scrollStart) / (scrollEnd - scrollStart);
+            return valueStart + progress * (valueEnd - valueStart);
+        }
+
+        // Apply animated property value
+        function applyAnimatedProperty(property, value) {
+            switch (property) {
+                case 'colorSaturation':
+                    colorSettings.saturation = value;
+                    break;
+                case 'colorBrightness':
+                    colorSettings.brightness = value;
+                    break;
+                case 'fadeSpeed':
+                    config.FADE_SPEED = value;
+                    break;
+                case 'curl':
+                    config.CURL = value;
+                    break;
+                case 'splatRadius':
+                    config.SPLAT_RADIUS = value;
+                    break;
+                case 'splatForce':
+                    config.SPLAT_FORCE = value;
+                    break;
+                case 'projectionDistance':
+                    config.PROJECTION_DISTANCE = value;
+                    break;
+                case 'cssSaturate':
+                    cssSaturate = value;
+                    updateCanvasFilter();
+                    break;
+            }
+        }
+
+        // Handle scroll animation updates
+        function handleScrollAnimations() {
+            const scrollY = window.scrollY || window.pageYOffset;
+
+            for (const rule of scrollAnimations.rules) {
+                const interpolatedValue = interpolateValue(
+                    scrollY,
+                    rule.scrollStart,
+                    rule.scrollEnd,
+                    rule.valueStart,
+                    rule.valueEnd
+                );
+                applyAnimatedProperty(rule.property, interpolatedValue);
+            }
+        }
+
+        // Initial application
+        handleScrollAnimations();
+
+        // Listen for scroll events
+        window.addEventListener('scroll', handleScrollAnimations, { passive: true });
     }
 
     function initFramebuffers() {

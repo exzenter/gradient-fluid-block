@@ -63,3 +63,28 @@
     position: relative;
     z-index: 1;
 }
+
+/* Compact mode for sticky background usage (no inner blocks) */
+.fgb-fluid-group.fgb-compact-mode {
+    height: 200px !important;
+    min-height: 200px !important;
+    max-height: 200px !important;
+    overflow: hidden;
+}
+
+.fgb-fluid-group.fgb-compact-mode::after {
+    content: 'Fluid Gradient Block (Compact Mode - No Inner Blocks)';
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(30, 30, 46, 0.9);
+    color: rgba(255, 255, 255, 0.7);
+    padding: 6px 14px;
+    border-radius: 4px;
+    font-size: 11px;
+    white-space: nowrap;
+    z-index: 100;
+    pointer-events: none;
+    border: 1px dashed rgba(99, 102, 241, 0.5);
+}

@@ -71,6 +71,11 @@
                 "siblingHoverMode": false,
                 "blendMode": "normal",
                 "negativeBloom": false,
+                "cssSaturate": 100,
+                "scrollAnimations": {
+                    "enabled": false,
+                    "rules": []
+                },
                 "elementInteraction": {
                     "enabled": false,
                     "selectors": "",
