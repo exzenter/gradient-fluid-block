@@ -173,9 +173,9 @@ export default function Edit({ attributes, setAttributes }) {
                                 label={__('Splat Radius', 'fluid-gradient-block')}
                                 value={fluidSettings.splatRadius}
                                 onChange={(value) => updateFluidSetting('splatRadius', value)}
-                                min={0.05}
+                                min={0}
                                 max={1}
-                                step={0.05}
+                                step={0.01}
                             />
                             <RangeControl
                                 label={__('Splat Force', 'fluid-gradient-block')}
@@ -351,7 +351,7 @@ export default function Edit({ attributes, setAttributes }) {
                                 label={__('Fade Speed', 'fluid-gradient-block')}
                                 value={fluidSettings.fadeSpeed || 1}
                                 onChange={(value) => updateFluidSetting('fadeSpeed', value)}
-                                min={0.01}
+                                min={0}
                                 max={15}
                                 step={0.01}
                                 help={__('How quickly colors fade out (higher = faster)', 'fluid-gradient-block')}

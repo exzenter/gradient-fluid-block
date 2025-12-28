@@ -25,9 +25,9 @@ import { useState } from '@wordpress/element';
 const ANIMATABLE_PROPERTIES = [
     { label: 'Color Saturation', value: 'colorSaturation', min: 0, max: 5, step: 0.1 },
     { label: 'Color Brightness', value: 'colorBrightness', min: 0, max: 1, step: 0.01 },
-    { label: 'Fade Speed', value: 'fadeSpeed', min: 0.01, max: 15, step: 0.01 },
+    { label: 'Fade Speed', value: 'fadeSpeed', min: 0, max: 15, step: 0.01 },
     { label: 'Curl (Vorticity)', value: 'curl', min: 0, max: 100, step: 1 },
-    { label: 'Splat Radius', value: 'splatRadius', min: 0.05, max: 1, step: 0.05 },
+    { label: 'Splat Radius', value: 'splatRadius', min: 0, max: 1, step: 0.01 },
     { label: 'Splat Force', value: 'splatForce', min: 0, max: 50000, step: 500 },
     { label: 'Projection Distance', value: 'projectionDistance', min: 0.5, max: 5, step: 0.25 },
     { label: 'CSS Saturate Filter (%)', value: 'cssSaturate', min: 0, max: 300, step: 5 },
