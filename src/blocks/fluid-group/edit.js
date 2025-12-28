@@ -666,10 +666,10 @@ export default function Edit({ attributes, setAttributes }) {
                                 label={__('Animation Speed', 'fluid-gradient-block')}
                                 value={fluidSettings.animationSpeed ?? 1}
                                 onChange={(value) => updateFluidSetting('animationSpeed', value)}
-                                min={0.01}
+                                min={0}
                                 max={3}
                                 step={0.01}
-                                help={__('Control overall canvas animation speed', 'fluid-gradient-block')}
+                                help={__('Control overall canvas animation speed (0 = frozen)', 'fluid-gradient-block')}
                             />
                             <p style={{ fontSize: '13px', marginBottom: '12px' }}>
                                 <strong>{scrollAnimations.rules?.length || 0}</strong> {__('animation rule(s) configured', 'fluid-gradient-block')}

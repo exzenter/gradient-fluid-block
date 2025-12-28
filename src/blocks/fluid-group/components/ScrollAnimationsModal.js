@@ -31,7 +31,7 @@ const ANIMATABLE_PROPERTIES = [
     { label: 'Splat Force', value: 'splatForce', min: 0, max: 50000, step: 500 },
     { label: 'Projection Distance', value: 'projectionDistance', min: 0.5, max: 5, step: 0.25 },
     { label: 'CSS Saturate Filter (%)', value: 'cssSaturate', min: 0, max: 300, step: 5 },
-    { label: 'Animation Speed', value: 'animationSpeed', min: 0.01, max: 3, step: 0.01 },
+    { label: 'Animation Speed', value: 'animationSpeed', min: 0, max: 3, step: 0.01 },
 ];
 
 // Generate unique ID
