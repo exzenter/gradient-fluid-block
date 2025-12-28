@@ -352,9 +352,18 @@ export default function Edit({ attributes, setAttributes }) {
                                 value={fluidSettings.fadeSpeed || 1}
                                 onChange={(value) => updateFluidSetting('fadeSpeed', value)}
                                 min={0}
-                                max={15}
+                                max={100}
                                 step={0.01}
                                 help={__('How quickly colors fade out (higher = faster)', 'fluid-gradient-block')}
+                            />
+                            <RangeControl
+                                label={__('Color Persistence', 'fluid-gradient-block')}
+                                value={fluidSettings.densityDissipation ?? 0.97}
+                                onChange={(value) => updateFluidSetting('densityDissipation', value)}
+                                min={0.9}
+                                max={0.9999}
+                                step={0.0001}
+                                help={__('How long colors stay on canvas (0.9999 = 10+ minutes)', 'fluid-gradient-block')}
                             />
                             <hr style={{ margin: '20px 0', borderColor: '#ddd' }} />
                             <SelectControl

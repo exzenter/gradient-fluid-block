@@ -855,6 +855,9 @@ function initFluidSimulation(canvas, userSettings, initialShapes = []) {
                     animationSpeed = value;
                     liveControls.speedMultiplier = value;
                     break;
+                case 'densityDissipation':
+                    config.DENSITY_DISSIPATION = value;
+                    break;
             }
         }
 
