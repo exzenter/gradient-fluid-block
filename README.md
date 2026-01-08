@@ -24,6 +24,17 @@ A WordPress Gutenberg block that functions like the core Group block but with an
    - **Colors**: Saturation, brightness, rainbow mode, dark mode
    - **Import/Export**: Copy and paste settings between blocks
 
+## Global API
+
+The plugin exposes a global function to initialize fluid blocks programmatically. This is useful for SPA transitions or dynamic content loading.
+
+```javascript
+// Initialize or re-initialize all fluid blocks
+if (window.initFluidGroupBlocks) {
+    window.initFluidGroupBlocks();
+}
+```
+
 ## Development
 
 ```bash

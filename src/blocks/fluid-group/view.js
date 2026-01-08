@@ -3,10 +3,13 @@
  * Initializes fluid simulation on frontend for blocks with fluid enabled
  */
 
-document.addEventListener('DOMContentLoaded', function () {
+function initFluidGroupBlocks() {
     const fluidBlocks = document.querySelectorAll('.fgb-fluid-group[data-fluid-enabled="true"]');
 
     fluidBlocks.forEach(function (block) {
+        // Prevent double initialization
+        if (block.dataset.fluidInitialized === 'true') return;
+
         const canvas = block.querySelector('.fgb-fluid-canvas');
         if (!canvas) return;
 
@@ -29,8 +32,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Initialize fluid simulation on this canvas
         initFluidSimulation(canvas, settings, initialShapes);
+
+        // Mark as initialized
+        block.dataset.fluidInitialized = 'true';
     });
-});
+}
+
+// Expose globally
+window.initFluidGroupBlocks = initFluidGroupBlocks;
+
+document.addEventListener('DOMContentLoaded', initFluidGroupBlocks);
 
 /**
  * Initialize WebGL Fluid Simulation
