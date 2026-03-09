@@ -1,0 +1,177 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "fgb/fluid-text",
+  "version": "1.0.0",
+  "title": "Fluid Gradient Text",
+  "category": "design",
+  "icon": "editor-textcolor",
+  "description": "Text with WebGL fluid gradient fill or knockout effect.",
+  "keywords": [
+    "fluid",
+    "gradient",
+    "text",
+    "animation",
+    "webgl",
+    "typography"
+  ],
+  "textdomain": "fluid-gradient-block",
+  "attributes": {
+    "text": {
+      "type": "string",
+      "default": "Hello World"
+    },
+    "textMode": {
+      "type": "string",
+      "default": "fill"
+    },
+    "fontFamily": {
+      "type": "string",
+      "default": "sans-serif"
+    },
+    "fontWeight": {
+      "type": "string",
+      "default": "700"
+    },
+    "letterSpacing": {
+      "type": "string",
+      "default": "0px"
+    },
+    "fontSize": {
+      "type": "string",
+      "default": "5vw"
+    },
+    "fontSizeMin": {
+      "type": "string",
+      "default": ""
+    },
+    "fontSizeMax": {
+      "type": "string",
+      "default": ""
+    },
+    "lineHeight": {
+      "type": "string",
+      "default": "1.2"
+    },
+    "textAlign": {
+      "type": "string",
+      "default": "center"
+    },
+    "enableHeading": {
+      "type": "boolean",
+      "default": false
+    },
+    "headingLevel": {
+      "type": "string",
+      "default": "h2"
+    },
+    "fluidSettings": {
+      "type": "object",
+      "default": {
+        "preset": "default",
+        "simResolution": 128,
+        "dyeResolution": 1024,
+        "densityDissipation": 0.97,
+        "velocityDissipation": 0.98,
+        "pressure": 0.8,
+        "curl": 30,
+        "splatRadius": 0.25,
+        "splatForce": 6000,
+        "projectionDistance": 1,
+        "fadeSpeed": 1,
+        "calmDown": false,
+        "calmDownDelay": 2000,
+        "calmDownStrength": 0.9,
+        "bloom": true,
+        "bloomIntensity": 0.8,
+        "bloomThreshold": 0.6,
+        "colorSaturation": 1,
+        "colorBrightness": 0.15,
+        "saturationBoost": 1,
+        "fixedColor": "#ff00ff",
+        "colorChangeDistance": 0,
+        "colorMode": "rainbow",
+        "hueMin": 0,
+        "hueMax": 360,
+        "gradientSpeed": 0.5,
+        "paletteColors": [
+          "#ff0000",
+          "#00ff00",
+          "#0000ff"
+        ],
+        "rainbowMode": true,
+        "preventOverblending": false,
+        "maxColorIntensity": 1,
+        "darkMode": false,
+        "cursorMode": "default",
+        "dotCursor": {
+          "size": 10,
+          "color": "#ffffff"
+        },
+        "crosshairCursor": {
+          "thickness": 1,
+          "color": "#ffffff"
+        },
+        "siblingHoverMode": false,
+        "blendMode": "normal",
+        "negativeBloom": false,
+        "cssSaturate": 100,
+        "animationSpeed": 1,
+        "scrollAnimations": {
+          "enabled": false,
+          "rules": []
+        },
+        "elementInteraction": {
+          "enabled": false,
+          "selectors": "",
+          "trackScroll": false,
+          "mode": "hardCorner",
+          "softEdgeRadius": 20,
+          "forceFieldStrength": 50,
+          "forceFieldRadius": 80,
+          "attractFieldStrength": 50,
+          "attractFieldRadius": 80,
+          "turbulenceIntensity": 30,
+          "turbulenceScale": 50,
+          "affectNewSplats": true,
+          "affectExistingFluid": false,
+          "edgeGlow": false,
+          "edgeGlowIntensity": 0.5,
+          "edgeGlowDistance": 15,
+          "edgeGlowMatchFluid": true,
+          "edgeGlowColor": "#ffffff"
+        }
+      }
+    },
+    "initialShapes": {
+      "type": "array",
+      "default": []
+    }
+  },
+  "supports": {
+    "anchor": true,
+    "align": [
+      "wide",
+      "full"
+    ],
+    "html": false,
+    "color": {
+      "background": true,
+      "text": false
+    },
+    "spacing": {
+      "margin": true,
+      "padding": true
+    },
+    "__experimentalBorder": {
+      "color": true,
+      "radius": true,
+      "style": true,
+      "width": true
+    }
+  },
+  "editorScript": "file:./index.js",
+  "editorStyle": "file:./editor.css",
+  "style": "file:./style.css",
+  "viewScript": "file:./view.js"
+}

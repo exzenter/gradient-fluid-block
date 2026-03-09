@@ -3,3 +3,4 @@
  */
 
 import './blocks/fluid-group';
+import './blocks/fluid-text';

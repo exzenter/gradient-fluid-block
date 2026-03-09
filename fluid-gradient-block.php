@@ -21,6 +21,7 @@ define('FGB_PLUGIN_URL', plugin_dir_url(__FILE__));
  */
 function fgb_register_block() {
     register_block_type(FGB_PLUGIN_DIR . 'build/blocks/fluid-group');
+    register_block_type(FGB_PLUGIN_DIR . 'build/blocks/fluid-text');
 }
 add_action('init', 'fgb_register_block');
 
@@ -48,6 +49,25 @@ function fgb_add_critical_css() {
             position: relative !important;
             z-index: 1 !important;
             width: 100%;
+        }
+        .fgb-fluid-text {
+            position: relative !important;
+            overflow: hidden;
+        }
+        .fgb-fluid-text-canvas {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            z-index: 1 !important;
+            display: block;
+        }
+        .fgb-fluid-text-sizer {
+            position: relative;
+            z-index: 0;
+            color: transparent;
+            pointer-events: none;
         }
     </style>
     <?php

@@ -1,0 +1,93 @@
+/* Editor styles for Fluid Gradient Text Block */
+
+.fgb-fluid-text-editor {
+    position: relative;
+    min-height: 60px;
+    overflow: hidden;
+    border-radius: 4px;
+}
+
+/* Editor preview background */
+.fgb-fluid-text-editor-preview {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%);
+    background-size: 300% 300%;
+    animation: fgb-text-gradient-shift 6s ease infinite;
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    position: relative;
+}
+
+.fgb-fluid-text-editor-preview.mode-knockout {
+    background: #1e1e2e;
+}
+
+@keyframes fgb-text-gradient-shift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* Text preview in fill mode */
+.fgb-fluid-text-editor-text {
+    width: 100%;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.fgb-fluid-text-editor-preview:not(.mode-knockout) .fgb-fluid-text-editor-text {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%);
+    background-size: 300% 300%;
+    animation: fgb-text-gradient-shift 6s ease infinite;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* Knockout mode text styling */
+.fgb-fluid-text-editor-preview.mode-knockout .fgb-fluid-text-editor-text {
+    color: #000;
+    text-shadow: none;
+}
+
+/* Container for knockout mode gradient bg */
+.fgb-fluid-text-editor-preview.mode-knockout {
+    position: relative;
+}
+
+.fgb-fluid-text-editor-preview.mode-knockout::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%);
+    background-size: 300% 300%;
+    animation: fgb-text-gradient-shift 6s ease infinite;
+    z-index: 0;
+}
+
+.fgb-fluid-text-editor-preview.mode-knockout .fgb-fluid-text-editor-text {
+    position: relative;
+    z-index: 1;
+    mix-blend-mode: multiply;
+    background: #fff;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* Mode label */
+.fgb-fluid-text-mode-label {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
